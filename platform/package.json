@@ -1,0 +1,31 @@
+{
+  "name": "rexify-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Rexify platform API — WhatsApp bot SaaS (Fastify + TypeScript)",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=.env src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node --env-file-if-exists=.env dist/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "migrate": "tsx --env-file-if-exists=.env src/migrate.ts"
+  },
+  "dependencies": {
+    "@fastify/jwt": "^8",
+    "@fastify/websocket": "^8",
+    "bcrypt": "^5",
+    "fastify": "^4",
+    "pg": "^8",
+    "pm2": "^5",
+    "qrcode": "^1"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5",
+    "@types/node": "^20",
+    "@types/pg": "^8",
+    "@types/qrcode": "^1",
+    "tsx": "^4",
+    "typescript": "^5"
+  }
+}

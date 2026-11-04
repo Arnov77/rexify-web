@@ -1,0 +1,108 @@
+.qr-modal {
+  position: relative;
+  align-items: center;
+  text-align: center;
+  max-width: 420px;
+  padding: var(--space-xl);
+  border-radius: var(--radius-xl);
+}
+
+.qr-modal__cancel {
+  position: absolute;
+  top: var(--space-md);
+  right: var(--space-md);
+  height: 32px;
+  padding: 0 var(--space-sm);
+  border-radius: var(--radius-md);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-secondary);
+  transition: background var(--duration-fast) var(--ease), color var(--duration-fast) var(--ease);
+}
+
+.qr-modal__cancel:hover {
+  background: var(--color-error-muted);
+  color: var(--color-error);
+}
+
+.qr-modal__title {
+  font-size: var(--text-subhead);
+  font-weight: var(--weight-semibold);
+}
+
+.qr-modal__hint {
+  max-width: 34ch;
+  font-size: var(--text-caption);
+  color: var(--color-text-secondary);
+}
+
+.qr-box {
+  display: grid;
+  place-items: center;
+  width: 200px;
+  height: 200px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: #ffffff;
+}
+
+.qr-box img {
+  width: 100%;
+  height: 100%;
+}
+
+.qr-box__state {
+  font-size: var(--text-body);
+  font-weight: var(--weight-medium);
+  color: #111111;
+}
+
+.qr-box__state--error {
+  color: var(--color-error);
+}
+
+.qr-skeleton {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, #ececf1 25%, #f7f7fa 50%, #ececf1 75%);
+  background-size: 200% 100%;
+  animation: qr-shimmer 1.4s linear infinite;
+}
+
+.qr-modal__status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--text-caption);
+  color: var(--color-text-secondary);
+}
+
+.qr-modal__pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--status-connecting);
+  animation: pulse 1.2s var(--ease) infinite;
+}
+
+.qr-modal__error {
+  font-size: var(--text-caption);
+  color: var(--color-error);
+}
+
+.qr-modal__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+@keyframes qr-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}

@@ -1,0 +1,134 @@
+import { existsSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
+import type { FastifyInstance } from 'fastify';
+import type { SocketStream } from '@fastify/websocket';
+import QRCode from 'qrcode';
+import { instanceQrPath } from '../paths';
+import { getSession, syncStatus } from '../session/store';
+import type { JWTPayload } from '../types/auth';
+
+const POLL_INTERVAL_MS = 2000;
+// ws: 1 = OPEN, tapi `ws` hanya expose konstanta ini sebagai static, bukan di instance.
+const SOCKET_OPEN = 1;
+const POLICY_VIOLATION = 1008;
+
+type WsMessage =
+  | { type: 'qr'; data: string }
+  | { type: 'connected' }
+  | { type: 'error'; message: string };
+
+async function readQr(sessionId: string): Promise<string | null> {
+  const path = instanceQrPath(sessionId);
+  if (!existsSync(path)) return null;
+
+  const raw = await readFile(path, 'utf8');
+  const text = raw.trim();
+  return text.length > 0 ? text : null;
+}
+
+export default async function qrServer(app: FastifyInstance): Promise<void> {
+  app.get('/api/ws/qr/:sessionId', { websocket: true }, (connection: SocketStream, request) => {
+    const socket = connection.socket;
+    const { sessionId } = request.params as { sessionId: string };
+    const token = (request.query as { token?: string } | undefined)?.token;
+
+    const send = (message: WsMessage): void => {
+      if (socket.readyState !== SOCKET_OPEN) return;
+      socket.send(JSON.stringify(message));
+    };
+
+    let payload: JWTPayload;
+    try {
+      if (!token) throw new Error('token kosong');
+      payload = app.jwt.verify<JWTPayload>(token);
+    } catch {
+      send({ type: 'error', message: 'Token tidak valid atau kadaluarsa' });
+      socket.close(POLICY_VIOLATION, 'unauthorized');
+      return;
+    }
+
+    let stopped = false;
+    let busy = false;
+    let lastQr: string | null = null;
+    let timer: NodeJS.Timeout | null = null;
+
+    const stop = (): void => {
+      stopped = true;
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+    };
+
+    const finishConnected = (): void => {
+      send({ type: 'connected' });
+      stop();
+      socket.close(1000, 'connected');
+    };
+
+    const tick = async (): Promise<void> => {
+      if (stopped || busy) return;
+      busy = true;
+
+      try {
+        // Status DB dicek tiap tick (2 detik) supaya session yang dihapus atau sudah
+        // active dari luar langsung menghentikan polling.
+        const current = await getSession(payload.userId, sessionId);
+        if (!current) {
+          send({ type: 'error', message: 'Session tidak ditemukan' });
+          stop();
+          socket.close(POLICY_VIOLATION, 'session not found');
+          return;
+        }
+        if (current.status === 'active') {
+          finishConnected();
+          return;
+        }
+
+        const qr = await readQr(sessionId);
+
+        if (!qr) {
+          if (lastQr !== null) {
+            // Bot menghapus qr.txt setelah pairing berhasil (SPEC § WebSocket — QR Streaming).
+            await syncStatus(sessionId, 'active');
+            finishConnected();
+          }
+          return;
+        }
+
+        if (qr !== lastQr) {
+          lastQr = qr;
+          send({ type: 'qr', data: await QRCode.toDataURL(qr) });
+        }
+      } catch (err) {
+        // Detail error hanya ke log; klien cukup tahu QR gagal diproses.
+        request.log.error(err);
+        send({ type: 'error', message: 'Gagal memproses QR' });
+      } finally {
+        busy = false;
+      }
+    };
+
+    socket.on('close', stop);
+    socket.on('error', stop);
+
+    void (async () => {
+      const session = await getSession(payload.userId, sessionId);
+      if (stopped) return;
+
+      if (!session) {
+        send({ type: 'error', message: 'Session tidak ditemukan' });
+        socket.close(POLICY_VIOLATION, 'session not found');
+        stop();
+        return;
+      }
+
+      await tick();
+      if (stopped) return;
+
+      timer = setInterval(() => {
+        void tick();
+      }, POLL_INTERVAL_MS);
+    })();
+  });
+}

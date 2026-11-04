@@ -1,0 +1,133 @@
+.dashboard-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-base);
+  margin-bottom: var(--space-base);
+}
+
+.create-form {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-sm);
+}
+
+.create-form .field {
+  min-width: 220px;
+}
+
+.session-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--grid-gap);
+}
+
+.session-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-base);
+}
+
+.session-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.session-card__identity {
+  display: flex;
+  gap: var(--space-md);
+  min-width: 0;
+}
+
+.session-card__avatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary-muted);
+  color: var(--color-text-primary);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+}
+
+.session-card__meta {
+  min-width: 0;
+}
+
+.session-card__name {
+  font-size: var(--text-subhead);
+  font-weight: var(--weight-semibold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-card__phone {
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-card__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.session-card__delete {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-left: auto;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  transition: background var(--duration-fast) var(--ease), color var(--duration-fast) var(--ease);
+}
+
+.session-card__delete:hover {
+  background: var(--color-error-muted);
+  color: var(--color-error);
+}
+
+.session-card__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+@media (min-width: 768px) {
+  .session-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .session-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .dashboard-toolbar {
+    align-items: stretch;
+  }
+
+  .create-form {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .create-form .field {
+    min-width: 0;
+  }
+}

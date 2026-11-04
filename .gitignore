@@ -1,0 +1,27 @@
+# Dependency & hasil build
+node_modules/
+dist/
+
+# Konfigurasi lokal & rahasia
+.env
+.env.local
+*.local
+
+# Log
+*.log
+
+# Sandbox validasi lokal (PGlite, stub PM2, artefak test)
+.pgtest/
+
+# Codebase bot (template read-only) dan data runtime instance
+core/
+instances/
+
+# Arsip sumber
+*.zip
+
+# Arsip sumber
+*.zip
+
+# Sertifikat yang dihasilkan runtime/tooling
+platform/ca.pem
