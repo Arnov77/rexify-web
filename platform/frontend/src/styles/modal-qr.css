@@ -36,6 +36,60 @@
   color: var(--color-text-secondary);
 }
 
+.qr-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+  counter-reset: qr-step;
+}
+
+.qr-steps__item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  font-size: var(--text-caption);
+  color: var(--color-text-secondary);
+  counter-increment: qr-step;
+}
+
+.qr-steps__item::before {
+  content: counter(qr-step);
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary-muted);
+  color: var(--color-text-primary);
+  font-size: 11px;
+  font-weight: var(--weight-semibold);
+}
+
+.pairing-code {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  width: 100%;
+  padding: var(--space-lg) var(--space-base);
+  background: var(--color-surface-raised);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.pairing-code__value {
+  font-size: var(--text-heading);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.24em;
+  color: var(--color-text-primary);
+}
+
 .qr-box {
   display: grid;
   place-items: center;
@@ -61,13 +115,14 @@
   color: var(--color-error);
 }
 
+/* Placeholder selama bot belum mengirim QR (176x176 = area gambar QR di dalam .qr-box). */
 .qr-skeleton {
-  width: 100%;
-  height: 100%;
+  width: 176px;
+  height: 176px;
   border-radius: var(--radius-sm);
   background: linear-gradient(90deg, #ececf1 25%, #f7f7fa 50%, #ececf1 75%);
   background-size: 200% 100%;
-  animation: qr-shimmer 1.4s linear infinite;
+  animation: qr-shimmer 1.4s linear infinite, qr-pulse 1.8s var(--ease) infinite;
 }
 
 .qr-modal__status {
@@ -104,5 +159,21 @@
   }
   to {
     background-position: -200% 0;
+  }
+}
+
+@keyframes qr-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qr-skeleton {
+    animation: none;
   }
 }

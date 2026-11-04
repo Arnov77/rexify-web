@@ -18,15 +18,55 @@ export async function generateConfig(sessionId: string): Promise<BotConfigFile> 
   }
 
   const base = defaultBotConfig();
-  const botPhone = session.phone_number ?? '';
+  const cs = config.customSettings;
+  // Pakai nomor dari form tambah session, bukan phone_number hasil Baileys: config.json
+  // ditulis sebelum bot sempat connect, jadi phone_number masih null.
+  const phone = session.phone_number_input ?? '';
 
   const file: BotConfigFile = {
     ...base,
-    botname: config.customSettings.botname,
-    // Nomor user tidak disimpan platform, jadi nomor bot dipakai sebagai owner.
-    owner: botPhone ? [botPhone] : [],
-    nomor: botPhone,
-    antilink: { ...base.antilink, whitelist_domain: config.customSettings.antilink_whitelist },
+    botname: cs.botname || base.botname,
+    ownername: cs.ownername || base.ownername,
+    thumbnailUrl: cs.thumbnailUrl || base.thumbnailUrl,
+    audioUrl: cs.audioUrl || base.audioUrl,
+    web: cs.web || base.web,
+    owner: [phone].filter(Boolean),
+    nomor: phone,
+    link: {
+      group: cs.link_group || '',
+      saluran: cs.link_saluran || '',
+    },
+    id: {
+      saluran: cs.id_saluran || '',
+      group: cs.id_group || '',
+      ownerGroup: cs.id_ownerGroup || '',
+    },
+    limit: {
+      free: cs.limit_free ?? 25,
+      premium: cs.limit_premium ?? 200,
+    },
+    antilink: {
+      // Whitelist user hanya menimpa default kalau benar-benar diisi.
+      whitelist_domain: cs.antilink_whitelist_domain.length
+        ? cs.antilink_whitelist_domain
+        : base.antilink.whitelist_domain,
+      whitelist_number: cs.antilink_whitelist_number.length
+        ? cs.antilink_whitelist_number
+        : [''],
+    },
+    premium: {
+      packages: cs.premium_packages.length ? cs.premium_packages : base.premium.packages,
+    },
+    tz: cs.tz || 'Asia/Jakarta',
+    // token.rex: pakai key user kalau diisi, fallback ke env platform
+    token: {
+      rex: cs.token_rex || process.env.REX_API_KEY || '',
+      jerexd: cs.token_jerexd || '',
+    },
+    git: {
+      name: cs.git_name ? [cs.git_name] : [''],
+      token: cs.git_token ? [cs.git_token] : [''],
+    },
     auto_reply: config.autoReply,
     welcome_msg: config.welcomeMsg,
   };

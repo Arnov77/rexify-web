@@ -20,10 +20,14 @@ export interface MeResponse {
 
 export type SessionStatus = 'connecting' | 'qr_pending' | 'active' | 'disconnected' | 'banned';
 
+export type ConnectMode = 'qr' | 'pairing';
+
 export interface Session {
   id: string;
   user_id: string;
   phone_number: string | null;
+  phone_number_input: string | null;
+  connect_mode: ConnectMode;
   status: SessionStatus;
   label: string | null;
   connected_at: string | null;
@@ -55,13 +59,51 @@ export interface PluginsEnabled {
   antiLink: boolean;
 }
 
+export interface PremiumPackage {
+  id: string;
+  label: string;
+  days: number;
+  price: number;
+  permanent?: boolean;
+}
+
 export interface CustomSettings {
+  // Identitas bot
   botname: string;
+  ownername: string;
+  thumbnailUrl: string;
+  audioUrl: string;
+  web: string;
+
+  // Grup & channel
+  link_group: string;
+  link_saluran: string;
+  id_saluran: string;
+  id_group: string;
+  id_ownerGroup: string;
+
+  // Limit
+  limit_free: number;
+  limit_premium: number;
+
+  // Antilink
+  antilink_whitelist_domain: string[];
+  antilink_whitelist_number: string[];
+
+  // Premium packages
+  premium_packages: PremiumPackage[];
+
+  // Behaviour
   prefix: string;
-  language: 'id' | 'en';
+  tz: string;
   typingDelay: number;
   readReceipt: boolean;
-  antilink_whitelist: string[];
+
+  // API keys (opsional, diisi user sendiri; kalau kosong platform inject dari env)
+  token_rex: string;
+  token_jerexd: string;
+  git_name: string;
+  git_token: string;
 }
 
 export interface BotConfig {

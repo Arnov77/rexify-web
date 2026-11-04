@@ -13,7 +13,7 @@ import {
   instanceQrPath,
   instanceSessionsDir,
 } from '../paths';
-import { countRunningSessions, syncStatus } from './store';
+import { countRunningSessions, getSessionById, syncStatus } from './store';
 
 type LinkedEntry = { name: string; kind: 'file' | 'dir' };
 
@@ -143,6 +143,13 @@ export async function spawnSession(userId: string, sessionId: string): Promise<v
 
   await generateConfig(sessionId);
 
+  // Nomor input dan mode connect dibaca dari DB, bukan dari body request, supaya nilai yang
+  // di-inject ke proses bot selalu sama dengan yang tersimpan.
+  const session = await getSessionById(sessionId);
+  if (!session) {
+    throw new Error(`session ${sessionId} tidak ditemukan`);
+  }
+
   const name = pm2Name(sessionId);
   await connectPm2();
 
@@ -159,6 +166,8 @@ export async function spawnSession(userId: string, sessionId: string): Promise<v
       SESSION_ID: sessionId,
       USER_ID: userId,
       QR_OUTPUT_PATH: instanceQrPath(sessionId),
+      PHONE_NUMBER: session.phone_number_input ?? '',
+      CONNECT_MODE: session.connect_mode ?? 'qr',
     },
   });
 

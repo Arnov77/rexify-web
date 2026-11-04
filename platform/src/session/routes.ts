@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { invalidateCache } from '../config/bot-config';
+import type { ConnectMode } from '../types/session';
 import { destroySession, getSessionStatus, spawnSession, stopSession } from './pm2-manager';
 import { createSession, deleteSession, getSession, listPluginLogs, listSessions } from './store';
 
@@ -13,7 +14,12 @@ interface ListQuery {
 
 interface CreateBody {
   label?: unknown;
+  phone_number?: unknown;
+  connect_mode?: unknown;
 }
+
+const PHONE_RE = /^\+?\d{10,}$/;
+const CONNECT_MODES = ['qr', 'pairing'] as const;
 
 interface SessionParams {
   sessionId: string;
@@ -24,6 +30,19 @@ function parseLabel(body: CreateBody): { ok: true; label: string | null } | { ok
   if (typeof body.label !== 'string') return { ok: false };
   const trimmed = body.label.trim();
   return { ok: true, label: trimmed.length > 0 ? trimmed : null };
+}
+
+// Spasi, dash, dan titik dari format lokal dibuang dulu supaya "0812-3456-7890" tetap valid.
+function normalizePhone(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const cleaned = raw.replace(/[\s.-]/g, '');
+  return PHONE_RE.test(cleaned) ? cleaned : null;
+}
+
+function parseConnectMode(raw: unknown): ConnectMode | null {
+  if (raw === undefined || raw === null) return 'qr';
+  if (typeof raw !== 'string') return null;
+  return (CONNECT_MODES as readonly string[]).includes(raw) ? (raw as ConnectMode) : null;
 }
 
 function parsePaging(query: ListQuery): { limit: number; offset: number } {
@@ -41,12 +60,29 @@ function parsePaging(query: ListQuery): { limit: number; offset: number } {
 
 export default async function sessionRoutes(app: FastifyInstance): Promise<void> {
   app.post('/api/sessions', async (request, reply) => {
-    const parsed = parseLabel((request.body ?? {}) as CreateBody);
-    if (!parsed.ok) {
+    const body = (request.body ?? {}) as CreateBody;
+
+    const parsedLabel = parseLabel(body);
+    if (!parsedLabel.ok) {
       return reply.code(400).send({ error: 'INVALID_LABEL', message: 'Label harus berupa teks' });
     }
 
-    const session = await createSession(request.user.id, parsed.label);
+    const phoneNumber = normalizePhone(body.phone_number);
+    if (!phoneNumber) {
+      return reply.code(400).send({
+        error: 'INVALID_PHONE_NUMBER',
+        message: 'Nomor WhatsApp wajib diisi, minimal 10 digit angka (boleh diawali +)',
+      });
+    }
+
+    const connectMode = parseConnectMode(body.connect_mode);
+    if (!connectMode) {
+      return reply
+        .code(400)
+        .send({ error: 'INVALID_CONNECT_MODE', message: "connect_mode hanya boleh 'qr' atau 'pairing'" });
+    }
+
+    const session = await createSession(request.user.id, parsedLabel.label, phoneNumber, connectMode);
     return reply.code(201).send({ session });
   });
 

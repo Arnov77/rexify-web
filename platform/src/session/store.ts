@@ -1,20 +1,26 @@
 import { pool } from '../db';
-import type { PluginLogRow, SessionRow, SessionStatus } from '../types/session';
+import type { ConnectMode, PluginLogRow, SessionRow, SessionStatus } from '../types/session';
 
-const COLUMNS = 'id, user_id, phone_number, status, label, connected_at, created_at, updated_at';
+const COLUMNS =
+  'id, user_id, phone_number, phone_number_input, connect_mode, status, label, connected_at, created_at, updated_at';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function isUuid(value: string): boolean {
   return UUID_RE.test(value);
 }
 
-export async function createSession(userId: string, label: string | null): Promise<SessionRow> {
+export async function createSession(
+  userId: string,
+  label: string | null,
+  phoneNumber: string,
+  connectMode: ConnectMode,
+): Promise<SessionRow> {
   // Session baru belum punya proses bot, jadi statusnya disconnected, bukan default kolom `connecting`.
   const { rows } = await pool.query<SessionRow>(
-    `INSERT INTO sessions (user_id, label, status)
-     VALUES ($1::uuid, $2, 'disconnected')
+    `INSERT INTO sessions (user_id, label, status, phone_number_input, connect_mode)
+     VALUES ($1::uuid, $2, 'disconnected', $3, $4)
      RETURNING ${COLUMNS}`,
-    [userId, label],
+    [userId, label, phoneNumber, connectMode],
   );
   return rows[0] as SessionRow;
 }

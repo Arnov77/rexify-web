@@ -14,16 +14,35 @@ const POLICY_VIOLATION = 1008;
 
 type WsMessage =
   | { type: 'qr'; data: string }
+  | { type: 'pairing'; data: string }
   | { type: 'connected' }
   | { type: 'error'; message: string };
 
-async function readQr(sessionId: string): Promise<string | null> {
-  const path = instanceQrPath(sessionId);
+// Bot menulis pairing code ke file sebelah qr.txt (lihat core/main.js requestPairing).
+function instancePairingPath(sessionId: string): string {
+  return instanceQrPath(sessionId).replace(/qr\.txt$/, 'pairing.txt');
+}
+
+// Bot menulis connected.txt saat connection === 'open'. Di mode pairing qr.txt tidak pernah
+// dibuat (jadi tidak pernah dihapus), maka file ini yang jadi sinyal connect ke platform.
+function instanceConnectedPath(sessionId: string): string {
+  return instanceQrPath(sessionId).replace(/qr\.txt$/, 'connected.txt');
+}
+
+async function readTextFile(path: string): Promise<string | null> {
   if (!existsSync(path)) return null;
 
   const raw = await readFile(path, 'utf8');
   const text = raw.trim();
   return text.length > 0 ? text : null;
+}
+
+async function readQr(sessionId: string): Promise<string | null> {
+  return readTextFile(instanceQrPath(sessionId));
+}
+
+async function readPairing(sessionId: string): Promise<string | null> {
+  return readTextFile(instancePairingPath(sessionId));
 }
 
 export default async function qrServer(app: FastifyInstance): Promise<void> {
@@ -50,6 +69,7 @@ export default async function qrServer(app: FastifyInstance): Promise<void> {
     let stopped = false;
     let busy = false;
     let lastQr: string | null = null;
+    let lastPairing: string | null = null;
     let timer: NodeJS.Timeout | null = null;
 
     const stop = (): void => {
@@ -85,20 +105,33 @@ export default async function qrServer(app: FastifyInstance): Promise<void> {
           return;
         }
 
-        const qr = await readQr(sessionId);
-
-        if (!qr) {
-          if (lastQr !== null) {
-            // Bot menghapus qr.txt setelah pairing berhasil (SPEC § WebSocket — QR Streaming).
-            await syncStatus(sessionId, 'active');
-            finishConnected();
-          }
+        // Cek paling awal: begitu bot terhubung, hentikan polling tanpa menunggu qr.txt hilang.
+        if (existsSync(instanceConnectedPath(sessionId))) {
+          await syncStatus(sessionId, 'active');
+          finishConnected();
           return;
         }
 
-        if (qr !== lastQr) {
+        const qr = await readQr(sessionId);
+        const pairing = await readPairing(sessionId);
+
+        if (!qr && lastQr !== null) {
+          // Bot menghapus qr.txt setelah pairing berhasil (SPEC § WebSocket — QR Streaming).
+          await syncStatus(sessionId, 'active');
+          finishConnected();
+          return;
+        }
+
+        if (qr && qr !== lastQr) {
           lastQr = qr;
           send({ type: 'qr', data: await QRCode.toDataURL(qr) });
+        }
+
+        // pairing.txt tidak dihapus di sini: bot yang membersihkannya setelah connect.
+        // Dedupe sama seperti QR supaya kode yang sama tidak dikirim tiap tick.
+        if (pairing && pairing !== lastPairing) {
+          lastPairing = pairing;
+          send({ type: 'pairing', data: pairing });
         }
       } catch (err) {
         // Detail error hanya ke log; klien cukup tahu QR gagal diproses.

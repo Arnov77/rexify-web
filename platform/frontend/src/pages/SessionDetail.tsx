@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import AppLayout from '../components/layout/AppLayout';
 import AutoReplyEditor from '../components/session/AutoReplyEditor';
@@ -6,6 +6,7 @@ import PluginToggle from '../components/session/PluginToggle';
 import QRModal from '../components/session/QRModal';
 import StatusBadge from '../components/session/StatusBadge';
 import Button from '../components/ui/Button';
+import Input from '../components/ui/Input';
 import { useToast } from '../components/ui/Toast';
 import { ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
@@ -16,7 +17,7 @@ import {
   getSession,
   updateConfig,
 } from '../lib/sessions';
-import type { BotConfig, PluginsEnabled, Session } from '../lib/types';
+import type { BotConfig, CustomSettings, PluginsEnabled, Session } from '../lib/types';
 import '../styles/detail.css';
 
 const PLUGIN_META: { key: keyof PluginsEnabled; label: string; description: string }[] = [
@@ -47,6 +48,48 @@ const PLUGIN_META: { key: keyof PluginsEnabled; label: string; description: stri
   },
 ];
 
+type SecretKey = 'token_rex' | 'token_jerexd' | 'git_token';
+
+interface SecretFieldProps {
+  label: string;
+  value: string;
+  visible: boolean;
+  onChange: (value: string) => void;
+  onToggle: () => void;
+}
+
+// Input password dengan tombol lihat/sembunyikan (Input biasa tidak punya slot tombol).
+function SecretField({ label, value, visible, onChange, onToggle }: SecretFieldProps) {
+  const inputId = useId();
+
+  return (
+    <div className="field">
+      <label className="field__label" htmlFor={inputId}>
+        {label}
+      </label>
+      <div className="secret-input">
+        <input
+          id={inputId}
+          className="input"
+          type={visible ? 'text' : 'password'}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          autoComplete="off"
+          spellCheck={false}
+        />
+        <button
+          type="button"
+          className="secret-input__toggle"
+          onClick={onToggle}
+          aria-label={visible ? `Sembunyikan ${label}` : `Tampilkan ${label}`}
+        >
+          {visible ? 'Sembunyikan' : 'Lihat'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 const dateFormat = new Intl.DateTimeFormat('id-ID', {
   day: '2-digit',
   month: 'short',
@@ -68,6 +111,13 @@ export default function SessionDetail() {
   const [busy, setBusy] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
   const [savingPlugin, setSavingPlugin] = useState<keyof PluginsEnabled | null>(null);
+  const [settings, setSettings] = useState<CustomSettings | null>(null);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [showSecret, setShowSecret] = useState<Record<SecretKey, boolean>>({
+    token_rex: false,
+    token_jerexd: false,
+    git_token: false,
+  });
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -76,6 +126,7 @@ export default function SessionDetail() {
       setSession(detail.session);
       setPm2(detail.pm2);
       setConfig(botConfig);
+      setSettings(botConfig.customSettings);
     } catch (err) {
       setLoadError(err instanceof ApiError ? err.message : 'Gagal memuat session');
     } finally {
@@ -141,6 +192,31 @@ export default function SessionDetail() {
     }
   }
 
+  function updateSetting<K extends keyof CustomSettings>(key: K, value: CustomSettings[K]) {
+    setSettings((prev) => (prev ? { ...prev, [key]: value } : prev));
+  }
+
+  function toggleSecret(key: SecretKey) {
+    setShowSecret((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  async function handleSaveSettings(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!settings) return;
+
+    setSavingSettings(true);
+    try {
+      const updated = await updateConfig(sessionId, { customSettings: settings });
+      setConfig(updated);
+      setSettings(updated.customSettings);
+      showToast('Pengaturan disimpan', 'success');
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : 'Gagal menyimpan pengaturan', 'error');
+    } finally {
+      setSavingSettings(false);
+    }
+  }
+
   const isRunning =
     session?.status === 'active' ||
     session?.status === 'connecting' ||
@@ -152,6 +228,13 @@ export default function SessionDetail() {
         <Link className="btn btn--ghost btn--sm" to="/">
           Kembali ke dashboard
         </Link>
+      </p>
+
+      <p className="notice notice--info notice--with-icon detail-notice">
+        <span className="notice__icon" aria-hidden="true">
+          ℹ
+        </span>
+        <span>Perubahan config berlaku setelah bot di-restart (Disconnect lalu Connect ulang).</span>
       </p>
 
       {loadError && (
@@ -212,8 +295,6 @@ export default function SessionDetail() {
             </div>
           </section>
 
-          <p className="notice notice--info">Perubahan config berlaku setelah bot di-restart</p>
-
           <section className="section">
             <div className="section__head">
               <h2 className="section__title">Auto reply</h2>
@@ -242,6 +323,161 @@ export default function SessionDetail() {
               ))}
             </div>
           </section>
+
+          {settings && (
+            <section className="section">
+              <div className="section__head">
+                <h2 className="section__title">Pengaturan bot</h2>
+                <p className="caption">Berlaku setelah bot di-restart</p>
+              </div>
+
+              <form className="card settings-form" onSubmit={handleSaveSettings} noValidate>
+                <p className="notice notice--info notice--with-icon">
+                  <span className="notice__icon" aria-hidden="true">
+                    ℹ
+                  </span>
+                  <span>Perubahan berlaku setelah bot di-restart.</span>
+                </p>
+
+                <fieldset className="settings-group">
+                  <legend className="settings-group__title">Identitas bot</legend>
+                  <div className="settings-grid">
+                    <Input
+                      label="Nama bot"
+                      placeholder="Rexify Bot"
+                      value={settings.botname}
+                      onChange={(event) => updateSetting('botname', event.target.value)}
+                      maxLength={60}
+                    />
+                    <Input
+                      label="Nama owner"
+                      placeholder="Nama kamu"
+                      value={settings.ownername}
+                      onChange={(event) => updateSetting('ownername', event.target.value)}
+                      maxLength={60}
+                    />
+                    <Input
+                      label="URL thumbnail"
+                      placeholder="https://…/thumbnail.jpg"
+                      value={settings.thumbnailUrl}
+                      onChange={(event) => updateSetting('thumbnailUrl', event.target.value)}
+                      inputMode="url"
+                    />
+                    <Input
+                      label="URL audio"
+                      placeholder="https://…/audio.mp3"
+                      value={settings.audioUrl}
+                      onChange={(event) => updateSetting('audioUrl', event.target.value)}
+                      inputMode="url"
+                    />
+                    <Input
+                      label="URL website"
+                      placeholder="https://rexapi.my.id/"
+                      value={settings.web}
+                      onChange={(event) => updateSetting('web', event.target.value)}
+                      inputMode="url"
+                    />
+                  </div>
+                </fieldset>
+
+                <fieldset className="settings-group">
+                  <legend className="settings-group__title">Grup &amp; channel</legend>
+                  <div className="settings-grid">
+                    <Input
+                      label="Link grup"
+                      placeholder="https://chat.whatsapp.com/…"
+                      value={settings.link_group}
+                      onChange={(event) => updateSetting('link_group', event.target.value)}
+                    />
+                    <Input
+                      label="Link saluran"
+                      placeholder="https://whatsapp.com/channel/…"
+                      value={settings.link_saluran}
+                      onChange={(event) => updateSetting('link_saluran', event.target.value)}
+                    />
+                    <Input
+                      label="ID saluran"
+                      hint="format: 123456@newsletter"
+                      placeholder="120363xxxx@newsletter"
+                      value={settings.id_saluran}
+                      onChange={(event) => updateSetting('id_saluran', event.target.value)}
+                    />
+                    <Input
+                      label="ID grup owner"
+                      placeholder="120363xxxx@g.us"
+                      value={settings.id_ownerGroup}
+                      onChange={(event) => updateSetting('id_ownerGroup', event.target.value)}
+                    />
+                  </div>
+                </fieldset>
+
+                <fieldset className="settings-group">
+                  <legend className="settings-group__title">Limit</legend>
+                  <div className="settings-grid">
+                    <Input
+                      label="Limit free"
+                      type="number"
+                      min={1}
+                      max={100000}
+                      value={settings.limit_free}
+                      onChange={(event) => updateSetting('limit_free', Number(event.target.value) || 0)}
+                    />
+                    <Input
+                      label="Limit premium"
+                      type="number"
+                      min={1}
+                      max={100000}
+                      value={settings.limit_premium}
+                      onChange={(event) =>
+                        updateSetting('limit_premium', Number(event.target.value) || 0)
+                      }
+                    />
+                  </div>
+                </fieldset>
+
+                <fieldset className="settings-group">
+                  <legend className="settings-group__title">API keys</legend>
+                  <p className="settings-group__hint">Kosongkan untuk pakai key default platform.</p>
+                  <div className="settings-grid">
+                    <SecretField
+                      label="Rex API Key"
+                      value={settings.token_rex}
+                      visible={showSecret.token_rex}
+                      onChange={(value) => updateSetting('token_rex', value)}
+                      onToggle={() => toggleSecret('token_rex')}
+                    />
+                    <SecretField
+                      label="Jerexd API Key"
+                      value={settings.token_jerexd}
+                      visible={showSecret.token_jerexd}
+                      onChange={(value) => updateSetting('token_jerexd', value)}
+                      onToggle={() => toggleSecret('token_jerexd')}
+                    />
+                    <Input
+                      label="GitHub username"
+                      placeholder="username"
+                      value={settings.git_name}
+                      onChange={(event) => updateSetting('git_name', event.target.value)}
+                      maxLength={60}
+                    />
+                    <SecretField
+                      label="GitHub token"
+                      value={settings.git_token}
+                      visible={showSecret.git_token}
+                      onChange={(value) => updateSetting('git_token', value)}
+                      onToggle={() => toggleSecret('git_token')}
+                    />
+                  </div>
+                </fieldset>
+
+                <div className="settings-actions">
+                  <Button type="submit" loading={savingSettings}>
+                    Simpan pengaturan
+                  </Button>
+                </div>
+              </form>
+            </section>
+          )}
         </>
       ) : null}
 
@@ -249,6 +485,7 @@ export default function SessionDetail() {
         <QRModal
           sessionId={sessionId}
           sessionLabel={session.label ?? 'session ini'}
+          connectMode={session.connect_mode}
           onClose={() => setQrOpen(false)}
           onConnected={() => void handleConnected()}
         />

@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import AppLayout from '../components/layout/AppLayout';
+import AddSessionModal from '../components/session/AddSessionModal';
 import QRModal from '../components/session/QRModal';
 import SessionCard from '../components/session/SessionCard';
 import Button from '../components/ui/Button';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import EmptyState from '../components/ui/EmptyState';
-import Input from '../components/ui/Input';
 import { useToast } from '../components/ui/Toast';
 import { IconPlus, IconSessions } from '../components/icons';
 import { ApiError } from '../lib/api';
@@ -13,7 +13,6 @@ import { useAuth } from '../lib/auth';
 import {
   connectSession,
   countEnabledPlugins,
-  createSession,
   deleteSession,
   disconnectSession,
   getConfig,
@@ -32,13 +31,11 @@ export default function Dashboard() {
   const [pluginCounts, setPluginCounts] = useState<Record<string, number | null>>({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [label, setLabel] = useState('');
-  const [creating, setCreating] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [qrSession, setQrSession] = useState<Session | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Session | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const labelRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -68,21 +65,10 @@ export default function Dashboard() {
     void load();
   }, [load]);
 
-  async function handleCreate(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setCreating(true);
-    try {
-      const trimmed = label.trim();
-      await createSession(trimmed.length > 0 ? trimmed : null);
-      setLabel('');
-      await load();
-      showToast('Session dibuat', 'success');
-    } catch (err) {
-      showToast(err instanceof ApiError ? err.message : 'Gagal membuat session', 'error');
-    } finally {
-      setCreating(false);
-    }
-  }
+  const handleCreated = useCallback(async () => {
+    await load();
+    showToast('Session dibuat', 'success');
+  }, [load, showToast]);
 
   async function handleConnect(session: Session) {
     setBusyId(session.id);
@@ -141,20 +127,10 @@ export default function Dashboard() {
           {runningCount} dari {quota} session berjalan
         </p>
 
-        <form className="create-form" onSubmit={handleCreate}>
-          <Input
-            ref={labelRef}
-            label="Nama session"
-            placeholder="Contoh: Bot Utama"
-            value={label}
-            onChange={(event) => setLabel(event.target.value)}
-            maxLength={60}
-          />
-          <Button type="submit" loading={creating}>
-            <IconPlus size={16} />
-            Tambah
-          </Button>
-        </form>
+        <Button onClick={() => setAddOpen(true)}>
+          <IconPlus size={16} />
+          Tambah Session
+        </Button>
       </div>
 
       {loadError && (
@@ -176,7 +152,7 @@ export default function Dashboard() {
           title="Belum ada session"
           text="Tambahkan session untuk menghubungkan nomor WhatsApp pertama kamu."
           action={
-            <Button onClick={() => labelRef.current?.focus()}>
+            <Button onClick={() => setAddOpen(true)}>
               <IconPlus size={16} />
               Tambah session
             </Button>
@@ -214,10 +190,15 @@ export default function Dashboard() {
         onCancel={() => setDeleteTarget(null)}
       />
 
+      {addOpen && (
+        <AddSessionModal onClose={() => setAddOpen(false)} onCreated={handleCreated} />
+      )}
+
       {qrSession && (
         <QRModal
           sessionId={qrSession.id}
           sessionLabel={qrSession.label ?? 'session ini'}
+          connectMode={qrSession.connect_mode}
           onClose={() => setQrSession(null)}
           onConnected={() => void handleConnected()}
         />

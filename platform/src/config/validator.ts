@@ -7,9 +7,31 @@ import type {
 } from '../types/config';
 
 const MATCH_TYPES: MatchType[] = ['exact', 'contains', 'startswith', 'regex'];
-const LANGUAGES: CustomSettings['language'][] = ['id', 'en'];
 const MAX_PREFIX_LENGTH = 3;
 const MAX_TYPING_DELAY = 5000;
+
+// Field teks customSettings yang boleh kosong (diisi user sendiri).
+const OPTIONAL_TEXT_FIELDS = [
+  'botname',
+  'ownername',
+  'thumbnailUrl',
+  'audioUrl',
+  'web',
+  'link_group',
+  'link_saluran',
+  'id_saluran',
+  'id_group',
+  'id_ownerGroup',
+  'token_rex',
+  'token_jerexd',
+  'git_name',
+  'git_token',
+] as const;
+
+const STRING_ARRAY_FIELDS = [
+  'antilink_whitelist_domain',
+  'antilink_whitelist_number',
+] as const;
 
 export class ValidationError extends Error {
   constructor(message: string) {
@@ -70,25 +92,31 @@ export function validateCustomSettings(input: unknown): Partial<CustomSettings> 
 
   const result: Partial<CustomSettings> = {};
 
-  if (input.botname !== undefined) {
-    if (typeof input.botname !== 'string' || !input.botname.trim()) {
-      throw new ValidationError('botname tidak boleh kosong');
+  // Teks bebas (boleh kosong) — dipakai identitas bot, link/id grup, dan API key.
+  for (const field of OPTIONAL_TEXT_FIELDS) {
+    const value = input[field];
+    if (value === undefined) continue;
+    if (typeof value !== 'string') {
+      throw new ValidationError(`${field} harus berupa teks`);
     }
-    result.botname = input.botname.trim();
+    result[field] = value.trim();
   }
 
   if (input.prefix !== undefined) {
-    if (typeof input.prefix !== 'string' || input.prefix.length > MAX_PREFIX_LENGTH) {
+    if (typeof input.prefix !== 'string' || input.prefix.trim().length === 0) {
+      throw new ValidationError('prefix wajib diisi');
+    }
+    if (input.prefix.length > MAX_PREFIX_LENGTH) {
       throw new ValidationError(`prefix maksimal ${MAX_PREFIX_LENGTH} karakter`);
     }
-    result.prefix = input.prefix;
+    result.prefix = input.prefix.trim();
   }
 
-  if (input.language !== undefined) {
-    if (typeof input.language !== 'string' || !LANGUAGES.includes(input.language as CustomSettings['language'])) {
-      throw new ValidationError(`language harus salah satu: ${LANGUAGES.join(', ')}`);
+  if (input.tz !== undefined) {
+    if (typeof input.tz !== 'string' || !input.tz.trim()) {
+      throw new ValidationError('tz wajib diisi');
     }
-    result.language = input.language as CustomSettings['language'];
+    result.tz = input.tz.trim();
   }
 
   if (input.typingDelay !== undefined) {
@@ -106,12 +134,54 @@ export function validateCustomSettings(input: unknown): Partial<CustomSettings> 
     result.readReceipt = input.readReceipt;
   }
 
-  if (input.antilink_whitelist !== undefined) {
-    const list = input.antilink_whitelist;
-    if (!Array.isArray(list) || list.some((entry) => typeof entry !== 'string')) {
-      throw new ValidationError('antilink_whitelist harus array of string');
+  for (const field of ['limit_free', 'limit_premium'] as const) {
+    const value = input[field];
+    if (value === undefined) continue;
+    if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+      throw new ValidationError(`${field} harus angka positif`);
     }
-    result.antilink_whitelist = list.map((entry) => (entry as string).trim()).filter(Boolean);
+    result[field] = Math.floor(value);
+  }
+
+  for (const field of STRING_ARRAY_FIELDS) {
+    const value = input[field];
+    if (value === undefined) continue;
+    if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string')) {
+      throw new ValidationError(`${field} harus array of string`);
+    }
+    result[field] = value.map((entry) => (entry as string).trim()).filter(Boolean);
+  }
+
+  if (input.premium_packages !== undefined) {
+    const packages = input.premium_packages;
+    if (!Array.isArray(packages)) {
+      throw new ValidationError('premium_packages harus array');
+    }
+    result.premium_packages = packages.map((item, index) => {
+      if (!isRecord(item)) {
+        throw new ValidationError(`premium_packages[${index}] harus berupa object`);
+      }
+
+      const id = typeof item.id === 'string' ? item.id.trim() : '';
+      const label = typeof item.label === 'string' ? item.label.trim() : '';
+
+      if (!id) throw new ValidationError(`premium_packages[${index}].id wajib diisi`);
+      if (!label) throw new ValidationError(`premium_packages[${index}].label wajib diisi`);
+      if (typeof item.days !== 'number' || !Number.isFinite(item.days) || item.days < 0) {
+        throw new ValidationError(`premium_packages[${index}].days harus angka >= 0`);
+      }
+      if (typeof item.price !== 'number' || !Number.isFinite(item.price) || item.price < 0) {
+        throw new ValidationError(`premium_packages[${index}].price harus angka >= 0`);
+      }
+
+      return {
+        id,
+        label,
+        days: Math.floor(item.days),
+        price: Math.floor(item.price),
+        ...(item.permanent === undefined ? {} : { permanent: Boolean(item.permanent) }),
+      };
+    });
   }
 
   return result;

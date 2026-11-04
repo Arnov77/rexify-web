@@ -1,19 +1,29 @@
 import { apiRequest } from './api';
-import type { AutoReplyRule, BotConfig, PluginLog, Session } from './types';
+import type { AutoReplyRule, BotConfig, ConnectMode, PluginLog, Session } from './types';
 
 interface SessionDetail {
   session: Session;
   pm2: string | null;
 }
 
+export interface CreateSessionInput {
+  label: string | null;
+  phoneNumber: string;
+  connectMode: ConnectMode;
+}
+
 export function listSessions(): Promise<Session[]> {
   return apiRequest<{ sessions: Session[] }>('/sessions').then((data) => data.sessions);
 }
 
-export function createSession(label: string | null): Promise<Session> {
+export function createSession(input: CreateSessionInput): Promise<Session> {
   return apiRequest<{ session: Session }>('/sessions', {
     method: 'POST',
-    body: { label },
+    body: {
+      label: input.label,
+      phone_number: input.phoneNumber,
+      connect_mode: input.connectMode,
+    },
   }).then((data) => data.session);
 }
 

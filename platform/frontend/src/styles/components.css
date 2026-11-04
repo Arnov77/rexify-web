@@ -315,8 +315,19 @@
 
 .notice--info {
   border-color: var(--color-info-muted);
+  border-left: 3px solid var(--color-info);
   background: var(--color-info-muted);
   color: var(--color-text-primary);
+}
+
+.notice--with-icon {
+  align-items: flex-start;
+}
+
+.notice__icon {
+  flex: 0 0 auto;
+  color: var(--color-info);
+  line-height: 1.2;
 }
 
 .notice--error {

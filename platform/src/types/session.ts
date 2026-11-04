@@ -1,5 +1,7 @@
 export type SessionStatus = 'connecting' | 'qr_pending' | 'active' | 'disconnected' | 'banned';
 
+export type ConnectMode = 'qr' | 'pairing';
+
 export interface ManagedSession {
   userId: string;
   sessionId: string;
@@ -19,6 +21,8 @@ export interface SessionRow {
   id: string;
   user_id: string;
   phone_number: string | null;
+  phone_number_input: string | null;
+  connect_mode: ConnectMode;
   status: SessionStatus;
   label: string | null;
   connected_at: Date | null;

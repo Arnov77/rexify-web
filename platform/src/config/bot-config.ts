@@ -34,6 +34,7 @@ export interface ConfigPatch {
 }
 
 function mapRow(row: BotConfigRow): BotConfig {
+  // Row lama (custom_settings '{}') tetap aman: semua key jatuh ke default.
   const settings = { ...DEFAULT_CUSTOM_SETTINGS, ...(row.custom_settings ?? {}) };
   return {
     sessionId: row.session_id,
@@ -42,7 +43,9 @@ function mapRow(row: BotConfigRow): BotConfig {
     pluginsEnabled: { ...DEFAULT_PLUGINS_ENABLED, ...(row.plugins_enabled ?? {}) },
     customSettings: {
       ...settings,
-      antilink_whitelist: settings.antilink_whitelist ?? [],
+      antilink_whitelist_domain: settings.antilink_whitelist_domain ?? [],
+      antilink_whitelist_number: settings.antilink_whitelist_number ?? [],
+      premium_packages: settings.premium_packages ?? [],
     },
     updatedAt: row.updated_at,
   };
@@ -74,7 +77,7 @@ export function defaultConfigFor(sessionId: string): BotConfig {
     autoReply: [],
     welcomeMsg: { ...DEFAULT_WELCOME_MSG },
     pluginsEnabled: { ...DEFAULT_PLUGINS_ENABLED },
-    customSettings: { ...DEFAULT_CUSTOM_SETTINGS, antilink_whitelist: [] },
+    customSettings: { ...DEFAULT_CUSTOM_SETTINGS },
     updatedAt: new Date(),
   };
 }
