@@ -25,10 +25,11 @@ export const DEFAULT_PLUGINS_ENABLED: PluginsEnabled = {
 export const DEFAULT_CUSTOM_SETTINGS: CustomSettings = {
   // Identitas bot
   botname: 'Rexify Bot',
-  ownername: '',
-  thumbnailUrl: '',
-  audioUrl: '',
-  web: '',
+  ownername: 'Rexify User',
+  thumbnailUrl:
+    'https://raw.githubusercontent.com/Leoojon/dat1/main/uploads/25eb4e-1767859162744.jpg',
+  audioUrl: 'https://h.top4top.io/m_3622t3r7l1.mp3',
+  web: 'https://rexapi.my.id/',
 
   // Grup & channel
   link_group: '',

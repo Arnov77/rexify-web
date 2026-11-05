@@ -4,6 +4,7 @@ export interface ApiUser {
   plan: string;
   trial_ends_at: string | null;
   plan_expires_at: string | null;
+  email_verified?: boolean;
   created_at?: string;
   active?: boolean;
 }

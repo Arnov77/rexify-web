@@ -129,6 +129,16 @@
   border-color: var(--color-error);
 }
 
+.input:disabled,
+.input[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.field--disabled label {
+  opacity: 0.5;
+}
+
 .select,
 .textarea {
   width: 100%;
@@ -322,6 +332,17 @@
 
 .notice--with-icon {
   align-items: flex-start;
+}
+
+.notice--warning {
+  border-color: var(--color-warning-muted);
+  border-left: 3px solid var(--color-warning);
+  background: var(--color-warning-muted);
+  color: var(--color-text-primary);
+}
+
+.notice--warning .notice__icon {
+  color: var(--color-warning);
 }
 
 .notice__icon {

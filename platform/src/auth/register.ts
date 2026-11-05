@@ -38,7 +38,7 @@ export default async function registerRoutes(app: FastifyInstance): Promise<void
       const { rows } = await pool.query<UserRow>(
         `INSERT INTO users (email, password_hash, plan, trial_ends_at)
          VALUES ($1, $2, 'free', now() + make_interval(days => $3))
-         RETURNING id, email, password_hash, plan, trial_ends_at, plan_expires_at, created_at, updated_at`,
+         RETURNING id, email, password_hash, plan, trial_ends_at, plan_expires_at, email_verified, created_at, updated_at`,
         [email, passwordHash, PLAN_LIMITS.free.trial_days],
       );
 
@@ -60,6 +60,7 @@ export default async function registerRoutes(app: FastifyInstance): Promise<void
           plan: user.plan,
           trial_ends_at: user.trial_ends_at,
           plan_expires_at: user.plan_expires_at,
+          email_verified: user.email_verified,
           created_at: user.created_at,
         },
       });

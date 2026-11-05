@@ -16,7 +16,7 @@ export default function Register() {
   const [submitting, setSubmitting] = useState(false);
 
   if (!loading && user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={user.email_verified === false ? '/verify-email' : '/'} replace />;
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -35,7 +35,8 @@ export default function Register() {
     setSubmitting(true);
     try {
       await register(email.trim(), password);
-      navigate('/', { replace: true });
+      // Akun baru belum verified: lanjut ke halaman OTP, bukan landing.
+      navigate('/verify-email', { replace: true });
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : 'Gagal membuat akun, coba lagi');
     } finally {

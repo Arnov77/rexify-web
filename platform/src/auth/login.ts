@@ -27,7 +27,7 @@ export default async function loginRoutes(app: FastifyInstance): Promise<void> {
     }
 
     const { rows } = await pool.query<UserRow>(
-      `SELECT id, email, password_hash, plan, trial_ends_at, plan_expires_at, created_at, updated_at
+      `SELECT id, email, password_hash, plan, trial_ends_at, plan_expires_at, email_verified, created_at, updated_at
        FROM users WHERE email = $1`,
       [email],
     );
@@ -63,6 +63,7 @@ export default async function loginRoutes(app: FastifyInstance): Promise<void> {
         plan: user.plan,
         trial_ends_at: user.trial_ends_at,
         plan_expires_at: user.plan_expires_at,
+        email_verified: user.email_verified,
         created_at: user.created_at,
         active: isAccessActive(user),
       },

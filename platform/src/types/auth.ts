@@ -10,6 +10,7 @@ export interface AuthUser {
   plan: string;
   trial_ends_at: Date | null;
   plan_expires_at: Date | null;
+  email_verified: boolean;
 }
 
 export interface UserRow {
@@ -19,6 +20,7 @@ export interface UserRow {
   plan: string;
   trial_ends_at: Date | null;
   plan_expires_at: Date | null;
+  email_verified: boolean;
   created_at: Date;
   updated_at: Date;
 }

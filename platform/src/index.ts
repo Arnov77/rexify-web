@@ -4,6 +4,7 @@ import websocket from '@fastify/websocket';
 import { authMiddleware } from './auth/middleware';
 import loginRoutes from './auth/login';
 import registerRoutes from './auth/register';
+import verifyRoutes from './auth/verify';
 import { isAccessActive, sessionQuotaFor } from './config/plans';
 import configRoutes from './config/routes';
 import { ValidationError } from './config/validator';
@@ -53,6 +54,9 @@ async function main(): Promise<void> {
 
   await app.register(registerRoutes);
   await app.register(loginRoutes);
+  // send-otp (verify/email terverifikasi boleh belum verified) dan reset-password publik;
+  // endpoint verify tetap memvalidasi JWT sendiri di dalam handler.
+  await app.register(verifyRoutes);
 
   await app.register(async (instance) => {
     instance.addHook('onRequest', authMiddleware);

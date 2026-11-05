@@ -1,11 +1,24 @@
 import { existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
+import { pool } from '../db';
 import { instanceConfigPath } from '../paths';
 import { getSessionById } from '../session/store';
 import type { BotConfigFile } from '../types/config';
 import { defaultConfigFor, getConfig } from './bot-config';
 import { defaultBotConfig } from './defaults';
+
+// generateConfig tidak menerima plan user, jadi diambil lewat join sessions -> users.
+async function planOfSession(sessionId: string): Promise<string> {
+  const { rows } = await pool.query<{ plan: string }>(
+    `SELECT u.plan
+     FROM users u
+     JOIN sessions s ON s.user_id = u.id
+     WHERE s.id = $1::uuid`,
+    [sessionId],
+  );
+  return rows[0]?.plan ?? 'free';
+}
 
 export async function generateConfig(sessionId: string): Promise<BotConfigFile> {
   // Row config belum ada saat connect pertama: pakai default in-memory, bukan insert, karena
@@ -16,6 +29,8 @@ export async function generateConfig(sessionId: string): Promise<BotConfigFile> 
   if (!session) {
     throw new Error(`session ${sessionId} tidak ditemukan`);
   }
+
+  const plan = await planOfSession(sessionId);
 
   const base = defaultBotConfig();
   const cs = config.customSettings;
@@ -58,10 +73,12 @@ export async function generateConfig(sessionId: string): Promise<BotConfigFile> 
       packages: cs.premium_packages.length ? cs.premium_packages : base.premium.packages,
     },
     tz: cs.tz || 'Asia/Jakarta',
-    // token.rex: pakai key user kalau diisi, fallback ke env platform
+    // token.rex: pakai key user kalau diisi, fallback ke env platform.
+    // token.jerexd: hanya di-inject untuk plan pro/enterprise, plan free dapat string kosong.
     token: {
       rex: cs.token_rex || process.env.REX_API_KEY || '',
-      jerexd: cs.token_jerexd || '',
+      jerexd:
+        plan === 'pro' || plan === 'enterprise' ? process.env.JEREXD_API_KEY || '' : '',
     },
     git: {
       name: cs.git_name ? [cs.git_name] : [''],

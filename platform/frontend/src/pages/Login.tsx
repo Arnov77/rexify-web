@@ -16,7 +16,7 @@ export default function Login() {
   const [submitting, setSubmitting] = useState(false);
 
   if (!loading && user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={user.email_verified === false ? '/verify-email' : '/'} replace />;
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -35,7 +35,8 @@ export default function Login() {
     setSubmitting(true);
     try {
       await login(email.trim(), password);
-      navigate('/', { replace: true });
+      // ProtectedRoute mengarahkan ke /verify-email kalau email belum verified.
+      navigate('/dashboard', { replace: true });
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : 'Gagal masuk, coba lagi');
     } finally {
@@ -86,6 +87,10 @@ export default function Login() {
             Masuk
           </Button>
         </form>
+
+        <p className="auth-footer">
+          <Link to="/forgot-password">Lupa password?</Link>
+        </p>
 
         <p className="auth-footer">
           Belum punya akun? <Link to="/register">Buat akun</Link>

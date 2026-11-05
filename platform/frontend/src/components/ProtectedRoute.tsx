@@ -27,7 +27,12 @@ export default function ProtectedRoute() {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
+  }
+
+  // Akun baru wajib verifikasi OTP dulu sebelum masuk dashboard/session.
+  if (user.email_verified === false) {
+    return <Navigate to="/verify-email" replace />;
   }
 
   return <Outlet />;

@@ -21,6 +21,8 @@ interface AuthContextValue {
   register: (email: string, password: string) => Promise<void>;
   logout: () => void;
   refresh: () => Promise<void>;
+  // Dipanggil setelah OTP benar supaya ProtectedRoute langsung membuka dashboard.
+  markEmailVerified: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -55,7 +57,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (err instanceof ApiError && err.status === 401) {
         setToken(null);
       }
-      if (err instanceof ApiError && err.status === 403) {
+      // 403 EMAIL_NOT_VERIFIED bukan plan habis: user harus ke halaman verifikasi.
+      if (
+        err instanceof ApiError &&
+        err.status === 403 &&
+        err.code !== 'EMAIL_NOT_VERIFIED'
+      ) {
         setAccessExpired(true);
       }
       setUser(null);
@@ -91,9 +98,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [authenticate],
   );
 
+  const markEmailVerified = useCallback(() => {
+    setUser((prev) => (prev ? { ...prev, email_verified: true } : prev));
+  }, []);
+
   const value = useMemo<AuthContextValue>(
-    () => ({ user, limits, loading, accessExpired, login, register, logout, refresh }),
-    [user, limits, loading, accessExpired, login, register, logout, refresh],
+    () => ({
+      user,
+      limits,
+      loading,
+      accessExpired,
+      login,
+      register,
+      logout,
+      refresh,
+      markEmailVerified,
+    }),
+    [user, limits, loading, accessExpired, login, register, logout, refresh, markEmailVerified],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { invalidateCache } from '../config/bot-config';
+import { invalidateCache, createDefaultConfig } from '../config/bot-config';
 import type { ConnectMode } from '../types/session';
 import { destroySession, getSessionStatus, spawnSession, stopSession } from './pm2-manager';
 import { createSession, deleteSession, getSession, listPluginLogs, listSessions } from './store';
@@ -83,6 +83,7 @@ export default async function sessionRoutes(app: FastifyInstance): Promise<void>
     }
 
     const session = await createSession(request.user.id, parsedLabel.label, phoneNumber, connectMode);
+    await createDefaultConfig(session.id, parsedLabel.label ?? undefined);
     return reply.code(201).send({ session });
   });
 

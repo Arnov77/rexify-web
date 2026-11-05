@@ -30,7 +30,7 @@ export async function authMiddleware(
   }
 
   const { rows } = await pool.query<UserRow>(
-    `SELECT id, email, password_hash, plan, trial_ends_at, plan_expires_at, created_at, updated_at
+    `SELECT id, email, password_hash, plan, trial_ends_at, plan_expires_at, email_verified, created_at, updated_at
      FROM users WHERE id = $1::uuid`,
     [payload.userId],
   );
@@ -50,7 +50,20 @@ export async function authMiddleware(
     plan: user.plan,
     trial_ends_at: user.trial_ends_at,
     plan_expires_at: user.plan_expires_at,
+    email_verified: user.email_verified,
   };
+
+  // Endpoint auth (send-otp/verify-email/reset-password) dan /api/me tetap terbuka supaya
+  // frontend bisa menampilkan halaman verifikasi tanpa data user hilang.
+  const allowedWhileUnverified = request.url.startsWith('/api/auth/') || request.url === '/api/me';
+
+  if (!authUser.email_verified && !allowedWhileUnverified) {
+    await reply.code(403).send({
+      error: 'EMAIL_NOT_VERIFIED',
+      message: 'Verifikasi email kamu terlebih dahulu',
+    });
+    return;
+  }
 
   if (!isAccessActive(authUser)) {
     await reply.code(403).send({

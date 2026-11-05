@@ -18,6 +18,9 @@ interface RuleParams extends SessionParams {
   ruleId: string;
 }
 
+// Identitas bot hanya untuk plan berbayar; plan free tetap memakai nilai default.
+const LOCKED_FREE_FIELDS = ['botname', 'thumbnailUrl', 'audioUrl', 'web'] as const;
+
 async function loadConfig(sessionId: string): Promise<BotConfig> {
   return (await getConfig(sessionId)) ?? defaultConfigFor(sessionId);
 }
@@ -42,6 +45,11 @@ export default async function configRoutes(app: FastifyInstance): Promise<void> 
   app.patch('/api/sessions/:sessionId/config', async (request) => {
     const { sessionId } = request.params as SessionParams;
     const body = (request.body ?? {}) as Record<string, unknown>;
+
+    if (request.user.plan === 'free' && body.customSettings) {
+      const cs = body.customSettings as Record<string, unknown>;
+      for (const field of LOCKED_FREE_FIELDS) delete cs[field];
+    }
 
     const config = await updateConfig(sessionId, {
       autoReply: body.autoReply,

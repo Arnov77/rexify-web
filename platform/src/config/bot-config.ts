@@ -82,7 +82,15 @@ export function defaultConfigFor(sessionId: string): BotConfig {
   };
 }
 
-export async function createDefaultConfig(sessionId: string): Promise<BotConfig> {
+export async function createDefaultConfig(
+  sessionId: string,
+  botname?: string,
+): Promise<BotConfig> {
+  // Nama bot dari form tambah session jadi botname awal, bukan default generik.
+  const customSettings: CustomSettings = botname
+    ? { ...DEFAULT_CUSTOM_SETTINGS, botname }
+    : { ...DEFAULT_CUSTOM_SETTINGS };
+
   const { rows } = await pool.query<BotConfigRow>(
     `INSERT INTO bot_configs (session_id, auto_reply, welcome_msg, plugins_enabled, custom_settings)
      VALUES ($1::uuid, $2::jsonb, $3::jsonb, $4::jsonb, $5::jsonb)
@@ -93,7 +101,7 @@ export async function createDefaultConfig(sessionId: string): Promise<BotConfig>
       JSON.stringify(DEFAULT_AUTO_REPLY),
       JSON.stringify(DEFAULT_WELCOME_MSG),
       JSON.stringify(DEFAULT_PLUGINS_ENABLED),
-      JSON.stringify(DEFAULT_CUSTOM_SETTINGS),
+      JSON.stringify(customSettings),
     ],
   );
 

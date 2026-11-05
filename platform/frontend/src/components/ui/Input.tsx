@@ -1,13 +1,13 @@
-import { forwardRef, useId, type InputHTMLAttributes } from 'react';
+import { forwardRef, useId, type InputHTMLAttributes, type ReactNode } from 'react';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
   error?: string;
-  hint?: string;
+  hint?: ReactNode;
 }
 
 const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { label, error, hint, id, className, ...rest },
+  { label, error, hint, id, className, disabled, ...rest },
   ref,
 ) {
   const generatedId = useId();
@@ -19,8 +19,11 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   if (error) classes.push('input--error');
   if (className) classes.push(className);
 
+  const fieldClasses = ['field'];
+  if (disabled) fieldClasses.push('field--disabled');
+
   return (
-    <div className="field">
+    <div className={fieldClasses.join(' ')}>
       <label className="field__label" htmlFor={inputId}>
         {label}
       </label>
@@ -28,6 +31,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         ref={ref}
         id={inputId}
         className={classes.join(' ')}
+        disabled={disabled}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? errorId : hint ? hintId : undefined}
         {...rest}

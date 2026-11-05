@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useId, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import AppLayout from '../components/layout/AppLayout';
 import AutoReplyEditor from '../components/session/AutoReplyEditor';
@@ -54,18 +54,19 @@ const PLUGIN_META: { key: keyof PluginsEnabled; label: string; description: stri
   },
 ];
 
-type SecretKey = 'token_rex' | 'token_jerexd' | 'git_token';
+type SecretKey = 'token_rex' | 'git_token';
 
 interface SecretFieldProps {
   label: string;
   value: string;
   visible: boolean;
+  hint?: ReactNode;
   onChange: (value: string) => void;
   onToggle: () => void;
 }
 
 // Input password dengan tombol lihat/sembunyikan (Input biasa tidak punya slot tombol).
-function SecretField({ label, value, visible, onChange, onToggle }: SecretFieldProps) {
+function SecretField({ label, value, visible, hint, onChange, onToggle }: SecretFieldProps) {
   const inputId = useId();
 
   return (
@@ -92,6 +93,7 @@ function SecretField({ label, value, visible, onChange, onToggle }: SecretFieldP
           {visible ? 'Sembunyikan' : 'Lihat'}
         </button>
       </div>
+      {hint && <p className="field__hint">{hint}</p>}
     </div>
   );
 }
@@ -128,7 +130,6 @@ export default function SessionDetail() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [showSecret, setShowSecret] = useState<Record<SecretKey, boolean>>({
     token_rex: false,
-    token_jerexd: false,
     git_token: false,
   });
 
@@ -402,6 +403,14 @@ export default function SessionDetail() {
 
                   <fieldset className="settings-group">
                     <legend className="settings-group__title">Identitas bot</legend>
+                    {user?.plan === 'free' && (
+                      <p className="notice notice--warning notice--with-icon">
+                        <span className="notice__icon" aria-hidden="true">
+                          🔒
+                        </span>
+                        <span>Identitas bot hanya bisa diubah di plan Pro ke atas.</span>
+                      </p>
+                    )}
                     <div className="settings-grid">
                       <Input
                         label="Nama bot"
@@ -409,6 +418,7 @@ export default function SessionDetail() {
                         value={settings.botname}
                         onChange={(event) => updateSetting('botname', event.target.value)}
                         maxLength={60}
+                        disabled={user?.plan === 'free'}
                       />
                       <Input
                         label="Nama owner"
@@ -423,6 +433,7 @@ export default function SessionDetail() {
                         value={settings.thumbnailUrl}
                         onChange={(event) => updateSetting('thumbnailUrl', event.target.value)}
                         inputMode="url"
+                        disabled={user?.plan === 'free'}
                       />
                       <Input
                         label="URL audio"
@@ -430,6 +441,7 @@ export default function SessionDetail() {
                         value={settings.audioUrl}
                         onChange={(event) => updateSetting('audioUrl', event.target.value)}
                         inputMode="url"
+                        disabled={user?.plan === 'free'}
                       />
                       <Input
                         label="URL website"
@@ -437,6 +449,7 @@ export default function SessionDetail() {
                         value={settings.web}
                         onChange={(event) => updateSetting('web', event.target.value)}
                         inputMode="url"
+                        disabled={user?.plan === 'free'}
                       />
                     </div>
                   </fieldset>
@@ -504,15 +517,16 @@ export default function SessionDetail() {
                         label="Rex API Key"
                         value={settings.token_rex}
                         visible={showSecret.token_rex}
+                        hint={
+                          <>
+                            Dapatkan key di{' '}
+                            <a href="https://rexapi.my.id" target="_blank" rel="noopener">
+                              rexapi.my.id
+                            </a>
+                          </>
+                        }
                         onChange={(value) => updateSetting('token_rex', value)}
                         onToggle={() => toggleSecret('token_rex')}
-                      />
-                      <SecretField
-                        label="Jerexd API Key"
-                        value={settings.token_jerexd}
-                        visible={showSecret.token_jerexd}
-                        onChange={(value) => updateSetting('token_jerexd', value)}
-                        onToggle={() => toggleSecret('token_jerexd')}
                       />
                       <Input
                         label="GitHub username"
