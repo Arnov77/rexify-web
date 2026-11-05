@@ -3,7 +3,10 @@ import { readFile } from 'node:fs/promises';
 import type { FastifyInstance } from 'fastify';
 import type { SocketStream } from '@fastify/websocket';
 import QRCode from 'qrcode';
+import WebSocket, { type RawData } from 'ws';
 import { instanceQrPath } from '../paths';
+import { botRunnerStreamUrl } from '../session/bot-runner-client';
+import { isRemoteMode } from '../session/pm2-manager';
 import { getSession, syncStatus } from '../session/store';
 import type { JWTPayload } from '../types/auth';
 
@@ -86,6 +89,76 @@ export default async function qrServer(app: FastifyInstance): Promise<void> {
       socket.close(1000, 'connected');
     };
 
+    // Mode 'other': file qr/pairing/connected ada di mesin Bot Runner, jadi platform cuma
+    // meneruskan (proxy) WebSocket-nya ke frontend, plus konversi QR mentah ke PNG data URL.
+    const proxyRemote = (): void => {
+      let remote: WebSocket | null = null;
+      let remoteStopped = false;
+
+      const stopRemote = (): void => {
+        if (remoteStopped) return;
+        remoteStopped = true;
+        if (
+          remote &&
+          (remote.readyState === WebSocket.OPEN || remote.readyState === WebSocket.CONNECTING)
+        ) {
+          remote.close();
+        }
+        remote = null;
+      };
+
+      socket.on('close', stopRemote);
+      socket.on('error', stopRemote);
+
+      try {
+        remote = new WebSocket(botRunnerStreamUrl(sessionId));
+      } catch (err) {
+        request.log.error(err);
+        send({ type: 'error', message: 'Gagal terhubung ke Bot Runner' });
+        socket.close(POLICY_VIOLATION, 'bot runner unavailable');
+        return;
+      }
+
+      remote.on('message', (raw: RawData) => {
+        void (async () => {
+          try {
+            const message = JSON.parse(raw.toString()) as WsMessage;
+
+            if (message.type === 'qr') {
+              send({ type: 'qr', data: await QRCode.toDataURL(message.data) });
+              return;
+            }
+
+            if (message.type === 'connected') {
+              await syncStatus(sessionId, 'active');
+              send({ type: 'connected' });
+              stopRemote();
+              socket.close(1000, 'connected');
+              return;
+            }
+
+            send(message);
+          } catch (err) {
+            request.log.error(err);
+            send({ type: 'error', message: 'Gagal memproses pesan Bot Runner' });
+          }
+        })();
+      });
+
+      remote.on('error', (err: Error) => {
+        request.log.error(err);
+        send({ type: 'error', message: 'Koneksi ke Bot Runner gagal' });
+      });
+
+      remote.on('close', () => {
+        // Penutupan yang kita sendiri picu (connected) tidak perlu dilaporkan sebagai error.
+        if (remoteStopped) return;
+        send({ type: 'error', message: 'Koneksi ke Bot Runner terputus' });
+        stopRemote();
+        socket.close(POLICY_VIOLATION, 'bot runner disconnected');
+      });
+    };
+
     const tick = async (): Promise<void> => {
       if (stopped || busy) return;
       busy = true;
@@ -153,6 +226,11 @@ export default async function qrServer(app: FastifyInstance): Promise<void> {
         send({ type: 'error', message: 'Session tidak ditemukan' });
         socket.close(POLICY_VIOLATION, 'session not found');
         stop();
+        return;
+      }
+
+      if (isRemoteMode()) {
+        proxyRemote();
         return;
       }
 

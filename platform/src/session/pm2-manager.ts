@@ -1,7 +1,8 @@
 import { existsSync } from 'node:fs';
 import { cp, copyFile, mkdir, readdir, rm, symlink } from 'node:fs/promises';
 import path from 'node:path';
-import pm2 from 'pm2';
+// Type-only: hilang saat compile, jadi tidak ada require('pm2') di runtime cloud.
+import type { StartOptions } from 'pm2';
 import { createDefaultConfig } from '../config/bot-config';
 import { generateConfig } from '../config/generator';
 import { sessionQuotaFor } from '../config/plans';
@@ -13,6 +14,12 @@ import {
   instanceQrPath,
   instanceSessionsDir,
 } from '../paths';
+import {
+  destroySessionRemote,
+  getSessionStatusRemote,
+  spawnSessionRemote,
+  stopSessionRemote,
+} from './bot-runner-client';
 import { countRunningSessions, getSessionById, syncStatus } from './store';
 
 type LinkedEntry = { name: string; kind: 'file' | 'dir' };
@@ -36,10 +43,31 @@ export class SessionQuotaExceededError extends Error {
   }
 }
 
+// Mode 'other' = bot dijalankan Bot Runner Agent (mesin terpisah, lewat HTTP).
+// Default 'same' = PM2 langsung di mesin platform.
+export function isRemoteMode(): boolean {
+  return process.env.BOT_RUNNER_MODE === 'other';
+}
+
 let connectPromise: Promise<void> | null = null;
 
-function connectPm2(): Promise<void> {
+type Pm2Api = typeof import('pm2');
+
+// pm2 di-load lazy: di mode 'other' (cloud tanpa PM2 binary) module ini tidak pernah di-import.
+let _pm2: Pm2Api | null = null;
+
+async function getPm2(): Promise<Pm2Api> {
+  if (!_pm2) {
+    const mod = await import('pm2');
+    // pm2 adalah CJS; interop `default` bisa beda antar loader.
+    _pm2 = ((mod as unknown as { default?: Pm2Api }).default ?? mod) as Pm2Api;
+  }
+  return _pm2;
+}
+
+async function connectPm2(): Promise<void> {
   if (!connectPromise) {
+    const pm2 = await getPm2();
     connectPromise = new Promise<void>((resolve, reject) => {
       pm2.connect((err) => {
         if (err) {
@@ -54,25 +82,29 @@ function connectPm2(): Promise<void> {
   return connectPromise;
 }
 
-function pm2Start(options: pm2.StartOptions): Promise<void> {
+async function pm2Start(options: StartOptions): Promise<void> {
+  const pm2 = await getPm2();
   return new Promise((resolve, reject) => {
     pm2.start(options, (err) => (err ? reject(err) : resolve()));
   });
 }
 
-function pm2Delete(name: string): Promise<void> {
+async function pm2Delete(name: string): Promise<void> {
+  const pm2 = await getPm2();
   return new Promise((resolve, reject) => {
     pm2.delete(name, (err) => (err ? reject(err) : resolve()));
   });
 }
 
-function pm2Stop(name: string): Promise<void> {
+async function pm2Stop(name: string): Promise<void> {
+  const pm2 = await getPm2();
   return new Promise((resolve, reject) => {
     pm2.stop(name, (err) => (err ? reject(err) : resolve()));
   });
 }
 
-function pm2Describe(name: string): Promise<{ status: string } | null> {
+async function pm2Describe(name: string): Promise<{ status: string } | null> {
+  const pm2 = await getPm2();
   return new Promise((resolve, reject) => {
     pm2.describe(name, (err, list) => {
       if (err) {
@@ -124,7 +156,8 @@ async function getUserPlan(userId: string): Promise<string> {
 }
 
 export async function spawnSession(userId: string, sessionId: string): Promise<void> {
-  if (!existsSync(CORE_DIR)) {
+  // Mode 'other' tidak butuh core/ di mesin platform: Bot Runner yang menyiapkan instance.
+  if (!isRemoteMode() && !existsSync(CORE_DIR)) {
     throw new Error(`codebase bot tidak ditemukan di ${CORE_DIR}`);
   }
 
@@ -135,6 +168,32 @@ export async function spawnSession(userId: string, sessionId: string): Promise<v
     throw new SessionQuotaExceededError();
   }
 
+  // Nomor input dan mode connect dibaca dari DB, bukan dari body request, supaya nilai yang
+  // di-inject ke proses bot selalu sama dengan yang tersimpan.
+  const session = await getSessionById(sessionId);
+  if (!session) {
+    throw new Error(`session ${sessionId} tidak ditemukan`);
+  }
+
+  const botEnv: Record<string, string> = {
+    QR_OUTPUT_PATH: instanceQrPath(sessionId),
+    PHONE_NUMBER: session.phone_number_input ?? '',
+    CONNECT_MODE: session.connect_mode ?? 'qr',
+    // Watermark aktif untuk plan free, tidak ada untuk pro/enterprise
+    REXIFY_WATERMARK:
+      plan === 'free' ? 'Bot ini dibuat dengan Rexify. Kunjungi rexify.rexapi.my.id' : '',
+  };
+
+  if (isRemoteMode()) {
+    // Folder instance + symlink core dikerjakan Bot Runner; platform tetap pemilik config.json.
+    const configFile = await generateConfig(sessionId);
+    await spawnSessionRemote(userId, sessionId, botEnv, JSON.stringify(configFile));
+
+    await createDefaultConfig(sessionId);
+    await syncStatus(sessionId, 'connecting');
+    return;
+  }
+
   const dir = instanceDir(sessionId);
   await mkdir(dir, { recursive: true });
   await linkCoreEntries(dir);
@@ -142,13 +201,6 @@ export async function spawnSession(userId: string, sessionId: string): Promise<v
   await mkdir(instanceDataDir(sessionId), { recursive: true });
 
   await generateConfig(sessionId);
-
-  // Nomor input dan mode connect dibaca dari DB, bukan dari body request, supaya nilai yang
-  // di-inject ke proses bot selalu sama dengan yang tersimpan.
-  const session = await getSessionById(sessionId);
-  if (!session) {
-    throw new Error(`session ${sessionId} tidak ditemukan`);
-  }
 
   const name = pm2Name(sessionId);
   await connectPm2();
@@ -165,12 +217,7 @@ export async function spawnSession(userId: string, sessionId: string): Promise<v
     env: {
       SESSION_ID: sessionId,
       USER_ID: userId,
-      QR_OUTPUT_PATH: instanceQrPath(sessionId),
-      PHONE_NUMBER: session.phone_number_input ?? '',
-      CONNECT_MODE: session.connect_mode ?? 'qr',
-      // Watermark aktif untuk plan free, tidak ada untuk pro/enterprise
-      REXIFY_WATERMARK:
-        plan === 'free' ? 'Bot ini dibuat dengan Rexify. Kunjungi rexify.rexapi.my.id' : '',
+      ...botEnv,
     },
   });
 
@@ -181,6 +228,12 @@ export async function spawnSession(userId: string, sessionId: string): Promise<v
 }
 
 export async function stopSession(sessionId: string): Promise<void> {
+  if (isRemoteMode()) {
+    await stopSessionRemote(sessionId);
+    await syncStatus(sessionId, 'disconnected');
+    return;
+  }
+
   const name = pm2Name(sessionId);
   await connectPm2();
 
@@ -192,6 +245,13 @@ export async function stopSession(sessionId: string): Promise<void> {
 }
 
 export async function destroySession(sessionId: string): Promise<void> {
+  if (isRemoteMode()) {
+    // Bot Runner yang menghapus folder instance (kecuali sessions/).
+    await destroySessionRemote(sessionId);
+    await syncStatus(sessionId, 'disconnected');
+    return;
+  }
+
   const name = pm2Name(sessionId);
   await connectPm2();
 
@@ -212,6 +272,10 @@ export async function destroySession(sessionId: string): Promise<void> {
 }
 
 export async function getSessionStatus(sessionId: string): Promise<string | null> {
+  if (isRemoteMode()) {
+    return getSessionStatusRemote(sessionId);
+  }
+
   await connectPm2();
   const proc = await pm2Describe(pm2Name(sessionId));
   return proc ? proc.status : null;

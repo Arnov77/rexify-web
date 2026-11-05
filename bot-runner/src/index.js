@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs'
-import { copyFile, cp, mkdir, readdir, rm, symlink } from 'node:fs/promises'
+import { copyFile, cp, mkdir, readdir, rm, symlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import Fastify from 'fastify'
 import websocket from '@fastify/websocket'
@@ -109,7 +109,13 @@ app.post('/spawn/:sessionId', requireAuth, async (request, reply) => {
         : {}
 
     try {
-        await prepareInstance(sessionId)
+        const dir = await prepareInstance(sessionId)
+
+        // config.json digenerate platform (DB tetap di platform) lalu dikirim utuh ke sini.
+        if (typeof body.configJson === 'string' && body.configJson) {
+            await writeFile(path.join(dir, 'config.json'), body.configJson, 'utf8')
+        }
+
         await spawnBot(sessionId, { SESSION_ID: sessionId, USER_ID: userId, ...extraEnv })
         return { ok: true }
     } catch (error) {
