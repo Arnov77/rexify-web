@@ -168,6 +168,9 @@ export async function spawnSession(userId: string, sessionId: string): Promise<v
       QR_OUTPUT_PATH: instanceQrPath(sessionId),
       PHONE_NUMBER: session.phone_number_input ?? '',
       CONNECT_MODE: session.connect_mode ?? 'qr',
+      // Watermark aktif untuk plan free, tidak ada untuk pro/enterprise
+      REXIFY_WATERMARK:
+        plan === 'free' ? 'Bot ini dibuat dengan Rexify. Kunjungi rexify.rexapi.my.id' : '',
     },
   });
 
