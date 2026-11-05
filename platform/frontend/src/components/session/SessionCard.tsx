@@ -47,7 +47,7 @@ export default function SessionCard({
             {initials(session)}
           </span>
           <div className="session-card__meta">
-            <p className="session-card__name">{session.label ?? 'Session tanpa nama'}</p>
+            <p className="session-card__name">{session.label ?? 'Bot tanpa nama'}</p>
             <p className="session-card__phone mono">
               {session.phone_number ?? 'Belum terhubung'}
             </p>
@@ -59,23 +59,23 @@ export default function SessionCard({
       <div className="session-card__actions">
         {isRunning ? (
           <Button variant="secondary" size="sm" onClick={() => onDisconnect(session)} loading={busy}>
-            Disconnect
+            Hentikan
           </Button>
         ) : (
           <Button size="sm" onClick={() => onConnect(session)} loading={busy}>
-            Connect
+            Jalankan
           </Button>
         )}
 
         <Link className="btn btn--ghost btn--sm" to={`/sessions/${session.id}`}>
-          Detail
+          Kelola
         </Link>
 
         <button
           type="button"
           className="session-card__delete"
           onClick={() => onDelete(session)}
-          aria-label={`Hapus session ${session.label ?? session.id}`}
+          aria-label={`Hapus bot ${session.label ?? session.id}`}
         >
           <IconTrash size={16} />
         </button>

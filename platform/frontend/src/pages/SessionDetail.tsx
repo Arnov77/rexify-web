@@ -17,7 +17,13 @@ import {
   getSession,
   updateConfig,
 } from '../lib/sessions';
-import type { BotConfig, CustomSettings, PluginsEnabled, Session } from '../lib/types';
+import type {
+  BotConfig,
+  CustomSettings,
+  PluginsEnabled,
+  Session,
+  SessionTab,
+} from '../lib/types';
 import '../styles/detail.css';
 
 const PLUGIN_META: { key: keyof PluginsEnabled; label: string; description: string }[] = [
@@ -90,6 +96,12 @@ function SecretField({ label, value, visible, onChange, onToggle }: SecretFieldP
   );
 }
 
+const TABS: { key: SessionTab; label: string }[] = [
+  { key: 'autoReply', label: 'Auto Reply' },
+  { key: 'plugin', label: 'Plugin' },
+  { key: 'settings', label: 'Pengaturan' },
+];
+
 const dateFormat = new Intl.DateTimeFormat('id-ID', {
   day: '2-digit',
   month: 'short',
@@ -111,6 +123,7 @@ export default function SessionDetail() {
   const [busy, setBusy] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
   const [savingPlugin, setSavingPlugin] = useState<keyof PluginsEnabled | null>(null);
+  const [tab, setTab] = useState<SessionTab>('autoReply');
   const [settings, setSettings] = useState<CustomSettings | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
   const [showSecret, setShowSecret] = useState<Record<SecretKey, boolean>>({
@@ -223,18 +236,24 @@ export default function SessionDetail() {
     session?.status === 'qr_pending';
 
   return (
-    <AppLayout title="Detail session" userEmail={user?.email ?? ''} onLogout={logout}>
+    <AppLayout
+      title={loading ? 'Memuat...' : session?.label ?? 'Bot tanpa nama'}
+      userEmail={user?.email ?? ''}
+      plan={user?.plan ?? 'free'}
+      trialEndsAt={user?.trial_ends_at ?? null}
+      planExpiresAt={user?.plan_expires_at ?? null}
+      activeSession={{
+        id: sessionId,
+        label: session?.label ?? null,
+        tab,
+        onTabChange: setTab,
+      }}
+      onLogout={logout}
+    >
       <p className="detail-back">
         <Link className="btn btn--ghost btn--sm" to="/">
           Kembali ke dashboard
         </Link>
-      </p>
-
-      <p className="notice notice--info notice--with-icon detail-notice">
-        <span className="notice__icon" aria-hidden="true">
-          ℹ
-        </span>
-        <span>Perubahan config berlaku setelah bot di-restart (Disconnect lalu Connect ulang).</span>
       </p>
 
       {loadError && (
@@ -255,7 +274,7 @@ export default function SessionDetail() {
           <section className="card detail-header">
             <div className="detail-header__main">
               <div>
-                <h2 className="detail-header__name">{session.label ?? 'Session tanpa nama'}</h2>
+                <h2 className="detail-header__name">{session.label ?? 'Bot tanpa nama'}</h2>
                 <p className="detail-header__phone mono">
                   {session.phone_number ?? 'Belum terhubung'}
                 </p>
@@ -295,37 +314,73 @@ export default function SessionDetail() {
             </div>
           </section>
 
-          <section className="section">
-            <div className="section__head">
-              <h2 className="section__title">Auto reply</h2>
-              <p className="caption">{config.autoReply.length} rule tersimpan</p>
-            </div>
-            <div className="card">
-              <AutoReplyEditor sessionId={sessionId} config={config} onChange={setConfig} />
-            </div>
-          </section>
+          <div className="tabs" role="tablist" aria-label="Bagian session">
+            {TABS.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                role="tab"
+                id={`tab-${item.key}`}
+                aria-selected={tab === item.key}
+                aria-controls={`panel-${item.key}`}
+                className={tab === item.key ? 'tab tab--active' : 'tab'}
+                onClick={() => setTab(item.key)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
 
-          <section className="section">
-            <div className="section__head">
-              <h2 className="section__title">Plugin</h2>
-              <p className="caption">Aktifkan hanya plugin yang kamu pakai</p>
-            </div>
-            <div className="card plugin-list">
-              {PLUGIN_META.map((plugin) => (
-                <PluginToggle
-                  key={plugin.key}
-                  label={plugin.label}
-                  description={plugin.description}
-                  checked={config.pluginsEnabled[plugin.key]}
-                  disabled={savingPlugin === plugin.key}
-                  onChange={(value) => void handlePluginToggle(plugin.key, value)}
-                />
-              ))}
-            </div>
-          </section>
+          {tab === 'autoReply' && (
+            <section
+              className="section"
+              role="tabpanel"
+              id="panel-autoReply"
+              aria-labelledby="tab-autoReply"
+            >
+              <div className="section__head">
+                <h2 className="section__title">Auto reply</h2>
+                <p className="caption">{config.autoReply.length} rule tersimpan</p>
+              </div>
+              <div className="card">
+                <AutoReplyEditor sessionId={sessionId} config={config} onChange={setConfig} />
+              </div>
+            </section>
+          )}
 
-          {settings && (
-            <section className="section">
+          {tab === 'plugin' && (
+            <section
+              className="section"
+              role="tabpanel"
+              id="panel-plugin"
+              aria-labelledby="tab-plugin"
+            >
+              <div className="section__head">
+                <h2 className="section__title">Plugin</h2>
+                <p className="caption">Aktifkan hanya plugin yang kamu pakai</p>
+              </div>
+              <div className="card plugin-list">
+                {PLUGIN_META.map((plugin) => (
+                  <PluginToggle
+                    key={plugin.key}
+                    label={plugin.label}
+                    description={plugin.description}
+                    checked={config.pluginsEnabled[plugin.key]}
+                    disabled={savingPlugin === plugin.key}
+                    onChange={(value) => void handlePluginToggle(plugin.key, value)}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {tab === 'settings' && settings && (
+            <section
+              className="section"
+              role="tabpanel"
+              id="panel-settings"
+              aria-labelledby="tab-settings"
+            >
               <div className="section__head">
                 <h2 className="section__title">Pengaturan bot</h2>
                 <p className="caption">Berlaku setelah bot di-restart</p>

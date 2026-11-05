@@ -22,6 +22,8 @@ export type SessionStatus = 'connecting' | 'qr_pending' | 'active' | 'disconnect
 
 export type ConnectMode = 'qr' | 'pairing';
 
+export type SessionTab = 'autoReply' | 'plugin' | 'settings';
+
 export interface Session {
   id: string;
   user_id: string;

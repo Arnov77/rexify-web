@@ -55,7 +55,7 @@ export default function Dashboard() {
       );
       setPluginCounts(Object.fromEntries(counts));
     } catch (err) {
-      setLoadError(err instanceof ApiError ? err.message : 'Gagal memuat session');
+      setLoadError(err instanceof ApiError ? err.message : 'Gagal memuat bot');
     } finally {
       setLoading(false);
     }
@@ -67,7 +67,7 @@ export default function Dashboard() {
 
   const handleCreated = useCallback(async () => {
     await load();
-    showToast('Session dibuat', 'success');
+    showToast('Bot dibuat', 'success');
   }, [load, showToast]);
 
   async function handleConnect(session: Session) {
@@ -103,9 +103,9 @@ export default function Dashboard() {
       await deleteSession(deleteTarget.id);
       setDeleteTarget(null);
       await load();
-      showToast('Session dihapus', 'success');
+      showToast('Bot dihapus', 'success');
     } catch (err) {
-      showToast(err instanceof ApiError ? err.message : 'Gagal menghapus session', 'error');
+      showToast(err instanceof ApiError ? err.message : 'Gagal menghapus bot', 'error');
     } finally {
       setDeleting(false);
     }
@@ -121,17 +121,26 @@ export default function Dashboard() {
   }, [load, showToast]);
 
   return (
-    <AppLayout title="Dashboard" userEmail={user?.email ?? ''} onLogout={logout}>
-      <div className="dashboard-toolbar">
-        <p className="caption">
-          {runningCount} dari {quota} session berjalan
-        </p>
+    <AppLayout
+      title="Dashboard"
+      userEmail={user?.email ?? ''}
+      plan={user?.plan ?? 'free'}
+      trialEndsAt={user?.trial_ends_at ?? null}
+      planExpiresAt={user?.plan_expires_at ?? null}
+      onLogout={logout}
+    >
+      {sessions.length > 0 && (
+        <div className="dashboard-toolbar">
+          <p className="caption">
+            {runningCount} dari {quota} bot berjalan
+          </p>
 
-        <Button onClick={() => setAddOpen(true)}>
-          <IconPlus size={16} />
-          Tambah Session
-        </Button>
-      </div>
+          <Button onClick={() => setAddOpen(true)}>
+            <IconPlus size={16} />
+            Buat Bot
+          </Button>
+        </div>
+      )}
 
       {loadError && (
         <div className="notice notice--error" role="alert">
@@ -144,17 +153,17 @@ export default function Dashboard() {
 
       {loading ? (
         <p className="caption" role="status">
-          Memuat session…
+          Memuat bot…
         </p>
       ) : sessions.length === 0 ? (
         <EmptyState
           icon={<IconSessions size={48} />}
-          title="Belum ada session"
-          text="Tambahkan session untuk menghubungkan nomor WhatsApp pertama kamu."
+          title="Belum ada bot"
+          text="Buat bot pertama untuk menghubungkan nomor WhatsApp kamu."
           action={
             <Button onClick={() => setAddOpen(true)}>
               <IconPlus size={16} />
-              Tambah session
+              Buat Bot
             </Button>
           }
         />
@@ -176,10 +185,10 @@ export default function Dashboard() {
 
       <ConfirmDialog
         open={deleteTarget !== null}
-        title="Hapus session?"
+        title="Hapus bot?"
         description={
           <>
-            Session <strong>{deleteTarget?.label ?? deleteTarget?.id}</strong> akan dihentikan dan
+            Bot <strong>{deleteTarget?.label ?? deleteTarget?.id}</strong> akan dihentikan dan
             dihapus. Kredensial WhatsApp di folder <span className="mono">sessions/</span> tetap
             disimpan di server.
           </>
@@ -197,7 +206,7 @@ export default function Dashboard() {
       {qrSession && (
         <QRModal
           sessionId={qrSession.id}
-          sessionLabel={qrSession.label ?? 'session ini'}
+          sessionLabel={qrSession.label ?? 'bot ini'}
           connectMode={qrSession.connect_mode}
           onClose={() => setQrSession(null)}
           onConnected={() => void handleConnected()}

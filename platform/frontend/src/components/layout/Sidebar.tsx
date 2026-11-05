@@ -1,41 +1,66 @@
 import { NavLink } from 'react-router-dom';
-import {
-  IconAutoReply,
-  IconBilling,
-  IconChevronLeft,
-  IconChevronRight,
-  IconDashboard,
-  IconLogout,
-  IconMoon,
-  IconPlugins,
-  IconSettings,
-  IconSun,
-} from '../icons';
+import { IconChevronLeft, IconChevronRight, IconDashboard, IconLogout, IconMoon, IconSun } from '../icons';
+import type { SessionTab } from '../../lib/types';
 import type { Theme } from '../../lib/useTheme';
+
+export interface ActiveSessionInfo {
+  id: string;
+  label: string | null;
+  tab: SessionTab;
+  onTabChange: (tab: SessionTab) => void;
+}
 
 interface SidebarProps {
   collapsed: boolean;
   theme: Theme;
   userEmail: string;
+  plan: string;
+  trialEndsAt: string | null;
+  planExpiresAt: string | null;
+  activeSession?: ActiveSessionInfo;
   onToggleCollapse: () => void;
   onToggleTheme: () => void;
   onLogout: () => void;
+  // Dipakai untuk menutup drawer mobile setelah memilih menu.
+  onNavigate?: () => void;
 }
 
-const COMING_SOON = [
-  { label: 'Auto Reply', icon: IconAutoReply },
-  { label: 'Plugins', icon: IconPlugins },
-  { label: 'Settings', icon: IconSettings },
+const SUBNAV_TABS: { key: SessionTab; label: string }[] = [
+  { key: 'autoReply', label: 'Auto Reply' },
+  { key: 'plugin', label: 'Plugin' },
+  { key: 'settings', label: 'Pengaturan' },
 ];
+
+function planBadge(plan: string, trialEndsAt: string | null): { label: string; className: string } {
+  if (plan === 'pro') return { label: 'Pro', className: 'plan-badge plan-badge--pro' };
+  if (plan === 'enterprise') {
+    return { label: 'Enterprise', className: 'plan-badge plan-badge--enterprise' };
+  }
+
+  let days: number | null = null;
+  if (trialEndsAt) {
+    const end = new Date(trialEndsAt).getTime();
+    if (!Number.isNaN(end)) days = Math.ceil((end - Date.now()) / 86_400_000);
+  }
+  const label = days !== null ? `Trial ${days} hari` : 'Trial';
+  return { label, className: 'plan-badge plan-badge--free' };
+}
 
 export default function Sidebar({
   collapsed,
   theme,
   userEmail,
+  plan,
+  trialEndsAt,
+  planExpiresAt: _planExpiresAt,
+  activeSession,
   onToggleCollapse,
   onToggleTheme,
   onLogout,
+  onNavigate,
 }: SidebarProps) {
+  const badge = planBadge(plan, trialEndsAt);
+
   return (
     <aside className={collapsed ? 'sidebar sidebar--collapsed' : 'sidebar'}>
       <div className="sidebar__brand">
@@ -54,58 +79,55 @@ export default function Sidebar({
         </button>
       </div>
 
+      {/* Fitur bot (auto reply, plugin, pengaturan) ada di detail session, bukan nav global. */}
       <nav className="sidebar__nav" aria-label="Navigasi utama">
-        <p className="sidebar__section">{collapsed ? '' : 'Main'}</p>
+        {!collapsed && <p className="sidebar__section">Main</p>}
         <NavLink
           to="/"
           end
-          className={({ isActive }) =>
-            isActive ? 'nav-item nav-item--active' : 'nav-item'
-          }
+          className={({ isActive }) => (isActive ? 'nav-item nav-item--active' : 'nav-item')}
           title={collapsed ? 'Dashboard' : undefined}
+          onClick={onNavigate}
         >
           <IconDashboard />
           {!collapsed && <span className="nav-item__label">Dashboard</span>}
         </NavLink>
-
-        <p className="sidebar__section">{collapsed ? '' : 'Config'}</p>
-        {COMING_SOON.map((item) => {
-          const Icon = item.icon;
-          return (
-            <span
-              key={item.label}
-              className="nav-item nav-item--disabled"
-              aria-disabled="true"
-              title={collapsed ? `${item.label} — segera` : undefined}
-            >
-              <Icon />
-              {!collapsed && (
-                <>
-                  <span className="nav-item__label">{item.label}</span>
-                  <span className="nav-item__tag">Segera</span>
-                </>
-              )}
-            </span>
-          );
-        })}
-
-        <p className="sidebar__section">{collapsed ? '' : 'Account'}</p>
-        <span
-          className="nav-item nav-item--disabled"
-          aria-disabled="true"
-          title={collapsed ? 'Billing — segera' : undefined}
-        >
-          <IconBilling />
-          {!collapsed && (
-            <>
-              <span className="nav-item__label">Billing</span>
-              <span className="nav-item__tag">Segera</span>
-            </>
-          )}
-        </span>
       </nav>
 
+      {!collapsed && activeSession && (
+        <div className="session-subnav">
+          <p
+            className="session-subnav__title"
+            title={activeSession.label ?? activeSession.id}
+          >
+            {activeSession.label ?? 'Bot'}
+          </p>
+          {SUBNAV_TABS.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              className={
+                activeSession.tab === item.key
+                  ? 'session-subnav__item session-subnav__item--active'
+                  : 'session-subnav__item'
+              }
+              aria-current={activeSession.tab === item.key ? 'page' : undefined}
+              onClick={() => {
+                activeSession.onTabChange(item.key);
+                onNavigate?.();
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="sidebar__footer">
+        {!collapsed && (
+          <span className={badge.className}>{badge.label}</span>
+        )}
+
         <button
           type="button"
           className="nav-item"
