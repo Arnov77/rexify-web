@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom';
+import Logo from '../Logo';
 import { IconChevronLeft, IconChevronRight, IconDashboard, IconLogout, IconMoon, IconSun } from '../icons';
 import type { SessionTab } from '../../lib/types';
 import type { Theme } from '../../lib/useTheme';
@@ -18,6 +19,8 @@ interface SidebarProps {
   trialEndsAt: string | null;
   planExpiresAt: string | null;
   activeSession?: ActiveSessionInfo;
+  // List bot yang tampil di sidebar selama berada di Dashboard.
+  sessions?: Array<{ id: string; label: string | null; status: string }>;
   onToggleCollapse: () => void;
   onToggleTheme: () => void;
   onLogout: () => void;
@@ -54,6 +57,7 @@ export default function Sidebar({
   trialEndsAt,
   planExpiresAt: _planExpiresAt,
   activeSession,
+  sessions,
   onToggleCollapse,
   onToggleTheme,
   onLogout,
@@ -64,9 +68,7 @@ export default function Sidebar({
   return (
     <aside className={collapsed ? 'sidebar sidebar--collapsed' : 'sidebar'}>
       <div className="sidebar__brand">
-        <span className="sidebar__logo" aria-hidden="true">
-          R
-        </span>
+        <Logo className="sidebar__logo" />
         {!collapsed && <span className="sidebar__brand-name">Rexify</span>}
         <button
           type="button"
@@ -92,6 +94,28 @@ export default function Sidebar({
           <IconDashboard />
           {!collapsed && <span className="nav-item__label">Dashboard</span>}
         </NavLink>
+
+        {!collapsed && sessions && sessions.length > 0 && (
+          <div className="session-subnav">
+            <p className="session-subnav__title">Bot kamu</p>
+
+            {sessions.map((session) => (
+              <NavLink
+                key={session.id}
+                to={`/sessions/${session.id}`}
+                className={({ isActive }) =>
+                  isActive ? 'session-subnav__item session-subnav__item--active' : 'session-subnav__item'
+                }
+                onClick={onNavigate}
+              >
+                <span
+                  className={`subnav-dot subnav-dot--${session.status === 'active' ? 'active' : 'off'}`}
+                />
+                {session.label ?? 'Bot tanpa nama'}
+              </NavLink>
+            ))}
+          </div>
+        )}
       </nav>
 
       {!collapsed && activeSession && (

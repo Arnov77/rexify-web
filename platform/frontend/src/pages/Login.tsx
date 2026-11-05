@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
+import Logo from '../components/Logo';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import { ApiError } from '../lib/api';
@@ -46,9 +47,7 @@ export default function Login() {
     <div className="auth-page">
       <div className="auth-card">
         <div className="auth-brand">
-          <span className="auth-brand__logo" aria-hidden="true">
-            R
-          </span>
+          <Logo className="auth-brand__logo" />
           <span>Rexify</span>
         </div>
 

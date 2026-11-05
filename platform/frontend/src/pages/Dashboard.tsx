@@ -127,6 +127,7 @@ export default function Dashboard() {
       plan={user?.plan ?? 'free'}
       trialEndsAt={user?.trial_ends_at ?? null}
       planExpiresAt={user?.plan_expires_at ?? null}
+      sessions={sessions.map((s) => ({ id: s.id, label: s.label, status: s.status }))}
       onLogout={logout}
     >
       {sessions.length > 0 && (

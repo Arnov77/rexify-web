@@ -36,15 +36,12 @@
 }
 
 .sidebar__logo {
-  display: grid;
-  place-items: center;
+  display: block;
   width: 32px;
   height: 32px;
   flex: 0 0 32px;
   border-radius: var(--radius-md);
-  background: var(--color-primary-muted);
-  color: var(--color-text-primary);
-  font-weight: var(--weight-bold);
+  object-fit: contain;
 }
 
 .sidebar__brand-name {
@@ -188,6 +185,28 @@
 .session-subnav__item--active {
   border-left-color: var(--color-primary);
   color: var(--color-text-primary);
+}
+
+/* Dot status bot di sidebar — list bot saat di Dashboard */
+.subnav-dot {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: var(--radius-pill);
+}
+
+.subnav-dot--active {
+  background: var(--status-active);
+}
+
+.subnav-dot--off {
+  background: var(--color-text-muted);
+}
+
+.session-subnav__item .subnav-dot {
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
 }
 
 /* Nav item */

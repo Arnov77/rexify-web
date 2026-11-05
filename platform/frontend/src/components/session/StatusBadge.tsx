@@ -2,10 +2,10 @@ import type { SessionStatus } from '../../lib/types';
 
 const LABELS: Record<SessionStatus, string> = {
   active: 'Aktif',
-  connecting: 'Connecting',
+  connecting: 'Menghubungkan',
   qr_pending: 'Menunggu QR',
-  disconnected: 'Disconnected',
-  banned: 'Banned',
+  disconnected: 'Tidak aktif',
+  banned: 'Diblokir',
 };
 
 const TONES: Record<SessionStatus, string> = {

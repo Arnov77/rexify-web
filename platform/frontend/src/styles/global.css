@@ -141,3 +141,34 @@ svg {
     scroll-behavior: auto !important;
   }
 }
+
+/* Transisi pindah halaman (View Transitions API) — landing → login/register. */
+::view-transition-old(root) {
+  animation: page-fade-out var(--duration-base) var(--ease-exit) both;
+}
+
+::view-transition-new(root) {
+  animation: page-fade-in var(--duration-slow) var(--ease-enter) both;
+}
+
+@keyframes page-fade-out {
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* Fallback browser tanpa View Transitions: fade-in saat halaman dipasang. */
+@supports not (view-transition-name: root) {
+  .auth-page {
+    animation: page-fade-in var(--duration-slow) var(--ease-enter) both;
+  }
+}
+

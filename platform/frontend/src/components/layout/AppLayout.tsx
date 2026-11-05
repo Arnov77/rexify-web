@@ -13,6 +13,8 @@ interface AppLayoutProps {
   planExpiresAt: string | null;
   onLogout: () => void;
   activeSession?: ActiveSessionInfo;
+  // List bot untuk sidebar (hanya dipakai di Dashboard).
+  sessions?: Array<{ id: string; label: string | null; status: string }>;
   children: ReactNode;
 }
 
@@ -31,6 +33,7 @@ export default function AppLayout({
   planExpiresAt,
   onLogout,
   activeSession,
+  sessions,
   children,
 }: AppLayoutProps) {
   const [collapsed, setCollapsed] = useState(initialCollapsed);
@@ -62,6 +65,7 @@ export default function AppLayout({
         trialEndsAt={trialEndsAt}
         planExpiresAt={planExpiresAt}
         activeSession={activeSession}
+        sessions={sessions}
         onToggleCollapse={toggleSidebar}
         onToggleTheme={toggleTheme}
         onLogout={onLogout}

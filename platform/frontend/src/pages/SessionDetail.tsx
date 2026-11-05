@@ -248,6 +248,7 @@ export default function SessionDetail() {
         tab,
         onTabChange: setTab,
       }}
+      sessions={[]}
       onLogout={logout}
     >
       <p className="detail-back">
@@ -332,206 +333,212 @@ export default function SessionDetail() {
           </div>
 
           {tab === 'autoReply' && (
-            <section
-              className="section"
-              role="tabpanel"
-              id="panel-autoReply"
-              aria-labelledby="tab-autoReply"
-            >
-              <div className="section__head">
-                <h2 className="section__title">Auto reply</h2>
-                <p className="caption">{config.autoReply.length} rule tersimpan</p>
-              </div>
-              <div className="card">
-                <AutoReplyEditor sessionId={sessionId} config={config} onChange={setConfig} />
-              </div>
-            </section>
+            <div className="tab-panel">
+              <section
+                className="section"
+                role="tabpanel"
+                id="panel-autoReply"
+                aria-labelledby="tab-autoReply"
+              >
+                <div className="section__head">
+                  <h2 className="section__title">Auto reply</h2>
+                  <p className="caption">{config.autoReply.length} rule tersimpan</p>
+                </div>
+                <div className="card">
+                  <AutoReplyEditor sessionId={sessionId} config={config} onChange={setConfig} />
+                </div>
+              </section>
+            </div>
           )}
 
           {tab === 'plugin' && (
-            <section
-              className="section"
-              role="tabpanel"
-              id="panel-plugin"
-              aria-labelledby="tab-plugin"
-            >
-              <div className="section__head">
-                <h2 className="section__title">Plugin</h2>
-                <p className="caption">Aktifkan hanya plugin yang kamu pakai</p>
-              </div>
-              <div className="card plugin-list">
-                {PLUGIN_META.map((plugin) => (
-                  <PluginToggle
-                    key={plugin.key}
-                    label={plugin.label}
-                    description={plugin.description}
-                    checked={config.pluginsEnabled[plugin.key]}
-                    disabled={savingPlugin === plugin.key}
-                    onChange={(value) => void handlePluginToggle(plugin.key, value)}
-                  />
-                ))}
-              </div>
-            </section>
+            <div className="tab-panel">
+              <section
+                className="section"
+                role="tabpanel"
+                id="panel-plugin"
+                aria-labelledby="tab-plugin"
+              >
+                <div className="section__head">
+                  <h2 className="section__title">Plugin</h2>
+                  <p className="caption">Aktifkan hanya plugin yang kamu pakai</p>
+                </div>
+                <div className="card plugin-list">
+                  {PLUGIN_META.map((plugin) => (
+                    <PluginToggle
+                      key={plugin.key}
+                      label={plugin.label}
+                      description={plugin.description}
+                      checked={config.pluginsEnabled[plugin.key]}
+                      disabled={savingPlugin === plugin.key}
+                      onChange={(value) => void handlePluginToggle(plugin.key, value)}
+                    />
+                  ))}
+                </div>
+              </section>
+            </div>
           )}
 
           {tab === 'settings' && settings && (
-            <section
-              className="section"
-              role="tabpanel"
-              id="panel-settings"
-              aria-labelledby="tab-settings"
-            >
-              <div className="section__head">
-                <h2 className="section__title">Pengaturan bot</h2>
-                <p className="caption">Berlaku setelah bot di-restart</p>
-              </div>
-
-              <form className="card settings-form" onSubmit={handleSaveSettings} noValidate>
-                <p className="notice notice--info notice--with-icon">
-                  <span className="notice__icon" aria-hidden="true">
-                    ℹ
-                  </span>
-                  <span>Perubahan berlaku setelah bot di-restart.</span>
-                </p>
-
-                <fieldset className="settings-group">
-                  <legend className="settings-group__title">Identitas bot</legend>
-                  <div className="settings-grid">
-                    <Input
-                      label="Nama bot"
-                      placeholder="Rexify Bot"
-                      value={settings.botname}
-                      onChange={(event) => updateSetting('botname', event.target.value)}
-                      maxLength={60}
-                    />
-                    <Input
-                      label="Nama owner"
-                      placeholder="Nama kamu"
-                      value={settings.ownername}
-                      onChange={(event) => updateSetting('ownername', event.target.value)}
-                      maxLength={60}
-                    />
-                    <Input
-                      label="URL thumbnail"
-                      placeholder="https://…/thumbnail.jpg"
-                      value={settings.thumbnailUrl}
-                      onChange={(event) => updateSetting('thumbnailUrl', event.target.value)}
-                      inputMode="url"
-                    />
-                    <Input
-                      label="URL audio"
-                      placeholder="https://…/audio.mp3"
-                      value={settings.audioUrl}
-                      onChange={(event) => updateSetting('audioUrl', event.target.value)}
-                      inputMode="url"
-                    />
-                    <Input
-                      label="URL website"
-                      placeholder="https://rexapi.my.id/"
-                      value={settings.web}
-                      onChange={(event) => updateSetting('web', event.target.value)}
-                      inputMode="url"
-                    />
-                  </div>
-                </fieldset>
-
-                <fieldset className="settings-group">
-                  <legend className="settings-group__title">Grup &amp; channel</legend>
-                  <div className="settings-grid">
-                    <Input
-                      label="Link grup"
-                      placeholder="https://chat.whatsapp.com/…"
-                      value={settings.link_group}
-                      onChange={(event) => updateSetting('link_group', event.target.value)}
-                    />
-                    <Input
-                      label="Link saluran"
-                      placeholder="https://whatsapp.com/channel/…"
-                      value={settings.link_saluran}
-                      onChange={(event) => updateSetting('link_saluran', event.target.value)}
-                    />
-                    <Input
-                      label="ID saluran"
-                      hint="format: 123456@newsletter"
-                      placeholder="120363xxxx@newsletter"
-                      value={settings.id_saluran}
-                      onChange={(event) => updateSetting('id_saluran', event.target.value)}
-                    />
-                    <Input
-                      label="ID grup owner"
-                      placeholder="120363xxxx@g.us"
-                      value={settings.id_ownerGroup}
-                      onChange={(event) => updateSetting('id_ownerGroup', event.target.value)}
-                    />
-                  </div>
-                </fieldset>
-
-                <fieldset className="settings-group">
-                  <legend className="settings-group__title">Limit</legend>
-                  <div className="settings-grid">
-                    <Input
-                      label="Limit free"
-                      type="number"
-                      min={1}
-                      max={100000}
-                      value={settings.limit_free}
-                      onChange={(event) => updateSetting('limit_free', Number(event.target.value) || 0)}
-                    />
-                    <Input
-                      label="Limit premium"
-                      type="number"
-                      min={1}
-                      max={100000}
-                      value={settings.limit_premium}
-                      onChange={(event) =>
-                        updateSetting('limit_premium', Number(event.target.value) || 0)
-                      }
-                    />
-                  </div>
-                </fieldset>
-
-                <fieldset className="settings-group">
-                  <legend className="settings-group__title">API keys</legend>
-                  <p className="settings-group__hint">Kosongkan untuk pakai key default platform.</p>
-                  <div className="settings-grid">
-                    <SecretField
-                      label="Rex API Key"
-                      value={settings.token_rex}
-                      visible={showSecret.token_rex}
-                      onChange={(value) => updateSetting('token_rex', value)}
-                      onToggle={() => toggleSecret('token_rex')}
-                    />
-                    <SecretField
-                      label="Jerexd API Key"
-                      value={settings.token_jerexd}
-                      visible={showSecret.token_jerexd}
-                      onChange={(value) => updateSetting('token_jerexd', value)}
-                      onToggle={() => toggleSecret('token_jerexd')}
-                    />
-                    <Input
-                      label="GitHub username"
-                      placeholder="username"
-                      value={settings.git_name}
-                      onChange={(event) => updateSetting('git_name', event.target.value)}
-                      maxLength={60}
-                    />
-                    <SecretField
-                      label="GitHub token"
-                      value={settings.git_token}
-                      visible={showSecret.git_token}
-                      onChange={(value) => updateSetting('git_token', value)}
-                      onToggle={() => toggleSecret('git_token')}
-                    />
-                  </div>
-                </fieldset>
-
-                <div className="settings-actions">
-                  <Button type="submit" loading={savingSettings}>
-                    Simpan pengaturan
-                  </Button>
+            <div className="tab-panel">
+              <section
+                className="section"
+                role="tabpanel"
+                id="panel-settings"
+                aria-labelledby="tab-settings"
+              >
+                <div className="section__head">
+                  <h2 className="section__title">Pengaturan bot</h2>
+                  <p className="caption">Berlaku setelah bot di-restart</p>
                 </div>
-              </form>
-            </section>
+
+                <form className="card settings-form" onSubmit={handleSaveSettings} noValidate>
+                  <p className="notice notice--info notice--with-icon">
+                    <span className="notice__icon" aria-hidden="true">
+                      ℹ
+                    </span>
+                    <span>Perubahan berlaku setelah bot di-restart.</span>
+                  </p>
+
+                  <fieldset className="settings-group">
+                    <legend className="settings-group__title">Identitas bot</legend>
+                    <div className="settings-grid">
+                      <Input
+                        label="Nama bot"
+                        placeholder="Rexify Bot"
+                        value={settings.botname}
+                        onChange={(event) => updateSetting('botname', event.target.value)}
+                        maxLength={60}
+                      />
+                      <Input
+                        label="Nama owner"
+                        placeholder="Nama kamu"
+                        value={settings.ownername}
+                        onChange={(event) => updateSetting('ownername', event.target.value)}
+                        maxLength={60}
+                      />
+                      <Input
+                        label="URL thumbnail"
+                        placeholder="https://…/thumbnail.jpg"
+                        value={settings.thumbnailUrl}
+                        onChange={(event) => updateSetting('thumbnailUrl', event.target.value)}
+                        inputMode="url"
+                      />
+                      <Input
+                        label="URL audio"
+                        placeholder="https://…/audio.mp3"
+                        value={settings.audioUrl}
+                        onChange={(event) => updateSetting('audioUrl', event.target.value)}
+                        inputMode="url"
+                      />
+                      <Input
+                        label="URL website"
+                        placeholder="https://rexapi.my.id/"
+                        value={settings.web}
+                        onChange={(event) => updateSetting('web', event.target.value)}
+                        inputMode="url"
+                      />
+                    </div>
+                  </fieldset>
+
+                  <fieldset className="settings-group">
+                    <legend className="settings-group__title">Grup &amp; channel</legend>
+                    <div className="settings-grid">
+                      <Input
+                        label="Link grup"
+                        placeholder="https://chat.whatsapp.com/…"
+                        value={settings.link_group}
+                        onChange={(event) => updateSetting('link_group', event.target.value)}
+                      />
+                      <Input
+                        label="Link saluran"
+                        placeholder="https://whatsapp.com/channel/…"
+                        value={settings.link_saluran}
+                        onChange={(event) => updateSetting('link_saluran', event.target.value)}
+                      />
+                      <Input
+                        label="ID saluran"
+                        hint="format: 123456@newsletter"
+                        placeholder="120363xxxx@newsletter"
+                        value={settings.id_saluran}
+                        onChange={(event) => updateSetting('id_saluran', event.target.value)}
+                      />
+                      <Input
+                        label="ID grup owner"
+                        placeholder="120363xxxx@g.us"
+                        value={settings.id_ownerGroup}
+                        onChange={(event) => updateSetting('id_ownerGroup', event.target.value)}
+                      />
+                    </div>
+                  </fieldset>
+
+                  <fieldset className="settings-group">
+                    <legend className="settings-group__title">Limit</legend>
+                    <div className="settings-grid">
+                      <Input
+                        label="Limit free"
+                        type="number"
+                        min={1}
+                        max={100000}
+                        value={settings.limit_free}
+                        onChange={(event) => updateSetting('limit_free', Number(event.target.value) || 0)}
+                      />
+                      <Input
+                        label="Limit premium"
+                        type="number"
+                        min={1}
+                        max={100000}
+                        value={settings.limit_premium}
+                        onChange={(event) =>
+                          updateSetting('limit_premium', Number(event.target.value) || 0)
+                        }
+                      />
+                    </div>
+                  </fieldset>
+
+                  <fieldset className="settings-group">
+                    <legend className="settings-group__title">API keys</legend>
+                    <p className="settings-group__hint">Kosongkan untuk pakai key default platform.</p>
+                    <div className="settings-grid">
+                      <SecretField
+                        label="Rex API Key"
+                        value={settings.token_rex}
+                        visible={showSecret.token_rex}
+                        onChange={(value) => updateSetting('token_rex', value)}
+                        onToggle={() => toggleSecret('token_rex')}
+                      />
+                      <SecretField
+                        label="Jerexd API Key"
+                        value={settings.token_jerexd}
+                        visible={showSecret.token_jerexd}
+                        onChange={(value) => updateSetting('token_jerexd', value)}
+                        onToggle={() => toggleSecret('token_jerexd')}
+                      />
+                      <Input
+                        label="GitHub username"
+                        placeholder="username"
+                        value={settings.git_name}
+                        onChange={(event) => updateSetting('git_name', event.target.value)}
+                        maxLength={60}
+                      />
+                      <SecretField
+                        label="GitHub token"
+                        value={settings.git_token}
+                        visible={showSecret.git_token}
+                        onChange={(value) => updateSetting('git_token', value)}
+                        onToggle={() => toggleSecret('git_token')}
+                      />
+                    </div>
+                  </fieldset>
+
+                  <div className="settings-actions">
+                    <Button type="submit" loading={savingSettings}>
+                      Simpan pengaturan
+                    </Button>
+                  </div>
+                </form>
+              </section>
+            </div>
           )}
         </>
       ) : null}

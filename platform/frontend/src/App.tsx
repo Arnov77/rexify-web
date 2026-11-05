@@ -3,6 +3,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { ToastProvider } from './components/ui/Toast';
 import { AuthProvider } from './lib/auth';
 import Dashboard from './pages/Dashboard';
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import SessionDetail from './pages/SessionDetail';
@@ -14,11 +15,12 @@ export default function App() {
       <ToastProvider>
         <BrowserRouter>
           <Routes>
+            <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
 
             <Route element={<ProtectedRoute />}>
-              <Route path="/" element={<Dashboard />} />
+              <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/sessions/:sessionId" element={<SessionDetail />} />
             </Route>
 
