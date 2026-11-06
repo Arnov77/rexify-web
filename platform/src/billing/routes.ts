@@ -235,6 +235,20 @@ export default async function billingRoutes(app: FastifyInstance): Promise<void>
         });
       }
 
+      // Sandbox: URL QR cuma bisa dibuka manual, jadi cetak ke log supaya bisa dites tanpa UI.
+      // Simulator resmi Midtrans untuk menandai transaksi lunas: https://simulator.sandbox.midtrans.com/
+      if (process.env.MIDTRANS_ENV !== 'production') {
+        request.log.info(
+          {
+            order_id: orderId,
+            amount,
+            qr_code_url: charge.qr_code_url,
+            simulator: 'https://simulator.sandbox.midtrans.com/',
+          },
+          '[midtrans-sandbox] buka qr_code_url untuk bayar, atau tandai lunas lewat simulator',
+        );
+      }
+
       await pool.query(
         `INSERT INTO transactions
            (user_id, order_id, plan, amount, status, midtrans_transaction_id, payment_type)
