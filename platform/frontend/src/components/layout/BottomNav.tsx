@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { IconDashboard, IconLogout, IconMoon, IconSun } from '../icons';
+import { IconBilling, IconDashboard, IconLogout, IconMoon, IconSun } from '../icons';
 import type { Theme } from '../../lib/useTheme';
 
 interface BottomNavProps {
@@ -8,7 +8,7 @@ interface BottomNavProps {
   onLogout: () => void;
 }
 
-// Hanya destinasi yang sudah ada; item Config/Billing belum punya halaman.
+// Hanya destinasi yang sudah ada; item Config belum punya halaman.
 export default function BottomNav({ theme, onToggleTheme, onLogout }: BottomNavProps) {
   return (
     <nav className="bottom-nav" aria-label="Navigasi bawah">
@@ -21,6 +21,16 @@ export default function BottomNav({ theme, onToggleTheme, onLogout }: BottomNavP
       >
         <IconDashboard size={22} />
         <span>Dashboard</span>
+      </NavLink>
+
+      <NavLink
+        to="/billing"
+        className={({ isActive }) =>
+          isActive ? 'bottom-nav__item bottom-nav__item--active' : 'bottom-nav__item'
+        }
+      >
+        <IconBilling size={22} />
+        <span>Billing</span>
       </NavLink>
 
       <button

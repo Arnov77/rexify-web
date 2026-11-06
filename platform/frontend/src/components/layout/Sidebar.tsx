@@ -1,6 +1,14 @@
 import { NavLink } from 'react-router-dom';
 import Logo from '../Logo';
-import { IconChevronLeft, IconChevronRight, IconDashboard, IconLogout, IconMoon, IconSun } from '../icons';
+import {
+  IconBilling,
+  IconChevronLeft,
+  IconChevronRight,
+  IconDashboard,
+  IconLogout,
+  IconMoon,
+  IconSun,
+} from '../icons';
 import type { SessionTab } from '../../lib/types';
 import type { Theme } from '../../lib/useTheme';
 
@@ -93,6 +101,16 @@ export default function Sidebar({
         >
           <IconDashboard />
           {!collapsed && <span className="nav-item__label">Dashboard</span>}
+        </NavLink>
+
+        <NavLink
+          to="/billing"
+          className={({ isActive }) => (isActive ? 'nav-item nav-item--active' : 'nav-item')}
+          title={collapsed ? 'Billing' : undefined}
+          onClick={onNavigate}
+        >
+          <IconBilling />
+          {!collapsed && <span className="nav-item__label">Billing</span>}
         </NavLink>
 
         {!collapsed && sessions && sessions.length > 0 && (

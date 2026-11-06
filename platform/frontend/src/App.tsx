@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ToastProvider } from './components/ui/Toast';
 import { AuthProvider } from './lib/auth';
+import Billing from './pages/Billing';
 import Dashboard from './pages/Dashboard';
 import ForgotPassword from './pages/ForgotPassword';
 import Landing from './pages/Landing';
@@ -26,6 +27,7 @@ export default function App() {
 
             <Route element={<ProtectedRoute />}>
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/billing" element={<Billing />} />
               <Route path="/sessions/:sessionId" element={<SessionDetail />} />
             </Route>
 

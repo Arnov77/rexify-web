@@ -3,6 +3,7 @@ import jwt from '@fastify/jwt';
 import websocket from '@fastify/websocket';
 import { authMiddleware } from './auth/middleware';
 import loginRoutes from './auth/login';
+import billingRoutes from './billing/routes';
 import registerRoutes from './auth/register';
 import verifyRoutes from './auth/verify';
 import { isAccessActive, sessionQuotaFor } from './config/plans';
@@ -57,6 +58,9 @@ async function main(): Promise<void> {
   // send-otp (verify/email terverifikasi boleh belum verified) dan reset-password publik;
   // endpoint verify tetap memvalidasi JWT sendiri di dalam handler.
   await app.register(verifyRoutes);
+  // Webhook Midtrans harus publik; endpoint charge/status/riwayat memasang authMiddleware
+  // sendiri di dalam plugin ini.
+  await app.register(billingRoutes);
 
   await app.register(async (instance) => {
     instance.addHook('onRequest', authMiddleware);
