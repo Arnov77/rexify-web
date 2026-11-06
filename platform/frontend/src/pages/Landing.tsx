@@ -145,12 +145,20 @@ const FAQS = [
 ];
 
 // Fade-in halus saat elemen masuk viewport.
+// Pakai inline style, bukan class: React menulis ulang className elemen yang class-nya
+// dinamis (mis. faq-item saat accordion dibuka), sehingga class imperatif seperti
+// 'is-visible' hilang dan elemen kembali transparan.
+function revealElement(node: HTMLElement): void {
+  node.style.opacity = '1';
+  node.style.transform = 'translateY(0)';
+}
+
 function useRevealOnScroll() {
   useEffect(() => {
     const nodes = Array.from(document.querySelectorAll<HTMLElement>('[data-reveal]'));
 
     if (typeof IntersectionObserver === 'undefined') {
-      nodes.forEach((node) => node.classList.add('is-visible'));
+      nodes.forEach(revealElement);
       return;
     }
 
@@ -158,7 +166,7 @@ function useRevealOnScroll() {
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            entry.target.classList.add('is-visible');
+            revealElement(entry.target as HTMLElement);
             observer.unobserve(entry.target);
           }
         });
