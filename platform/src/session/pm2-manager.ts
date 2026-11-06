@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { cp, copyFile, mkdir, readdir, rm, symlink } from 'node:fs/promises';
 import path from 'node:path';
 // Type-only: hilang saat compile, jadi tidak ada require('pm2') di runtime cloud.
@@ -12,6 +12,7 @@ import {
   instanceConnectedPath,
   instanceDataDir,
   instanceDir,
+  instancePhonePath,
   instanceQrPath,
   instanceSessionsDir,
 } from '../paths';
@@ -289,6 +290,20 @@ export interface SessionRuntime {
   status: string | null;
   // true kalau proses bot online DAN connected.txt ada (WhatsApp benar-benar terhubung).
   connected: boolean;
+  // Nomor WhatsApp asli dari bot (phone.txt), null kalau belum pernah terhubung.
+  phone: string | null;
+}
+
+function readPhoneFile(sessionId: string): string | null {
+  const file = instancePhonePath(sessionId);
+  if (!existsSync(file)) return null;
+
+  try {
+    const text = readFileSync(file, 'utf8').trim();
+    return text.length > 0 ? text : null;
+  } catch {
+    return null;
+  }
 }
 
 // Dipakai untuk menyelaraskan status DB: status 'active' hanya bisa dipastikan lewat
@@ -303,5 +318,6 @@ export async function getSessionRuntime(sessionId: string): Promise<SessionRunti
   return {
     status: proc ? proc.status : null,
     connected: existsSync(instanceConnectedPath(sessionId)),
+    phone: readPhoneFile(sessionId),
   };
 }

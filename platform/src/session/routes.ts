@@ -97,9 +97,17 @@ async function reconcileStatus(sessions: SessionRow[]): Promise<SessionRow[]> {
         }
 
         // Proses hidup dan WhatsApp benar-benar terhubung.
-        if (runtime.connected && session.status !== 'active') {
-          await syncStatus(session.id, 'active');
-          return { ...session, status: 'active' as const };
+        if (runtime.connected) {
+          if (session.status !== 'active') {
+            await syncStatus(session.id, 'active', runtime.phone);
+            return { ...session, status: 'active' as const, phone_number: runtime.phone ?? session.phone_number };
+          }
+
+          // Nomor tersimpan telat (mis. bot connect sebelum kolom ini terisi).
+          if (!session.phone_number && runtime.phone) {
+            await syncStatus(session.id, 'active', runtime.phone);
+            return { ...session, phone_number: runtime.phone };
+          }
         }
       } catch {
         // Bot Runner / PM2 tidak terjangkau: tampilkan status DB apa adanya.

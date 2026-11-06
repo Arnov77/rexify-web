@@ -29,6 +29,11 @@ export function instanceConnectedPath(sessionId: string): string {
   return path.join(instanceDir(sessionId), 'connected.txt');
 }
 
+// Nomor WhatsApp yang benar-benar terhubung, ditulis bot saat connection === 'open'.
+export function instancePhonePath(sessionId: string): string {
+  return path.join(instanceDir(sessionId), 'phone.txt');
+}
+
 export function instanceCredsPath(sessionId: string): string {
   return path.join(instanceSessionsDir(sessionId), 'creds.json');
 }

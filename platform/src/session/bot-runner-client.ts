@@ -55,6 +55,8 @@ export interface RemoteSessionRuntime {
   status: string | null;
   // true kalau proses bot online DAN connected.txt ada (WhatsApp benar-benar terhubung).
   connected: boolean;
+  // Nomor WhatsApp asli dari bot (null kalau belum pernah terhubung).
+  phone: string | null;
 }
 
 export async function getSessionStatusRemote(sessionId: string): Promise<string | null> {
@@ -63,11 +65,15 @@ export async function getSessionStatusRemote(sessionId: string): Promise<string 
 }
 
 export async function getSessionRuntimeRemote(sessionId: string): Promise<RemoteSessionRuntime> {
-  const data = await call<{ status: string | null; connected?: boolean }>(
+  const data = await call<{ status: string | null; connected?: boolean; phone?: string | null }>(
     'GET',
     `/status/${sessionId}`,
   );
-  return { status: data.status, connected: Boolean(data.connected) };
+  return {
+    status: data.status,
+    connected: Boolean(data.connected),
+    phone: data.phone ?? null,
+  };
 }
 
 // URL WebSocket stream QR/pairing di Bot Runner (dipakai ws/qr-server.ts saat mode 'other').

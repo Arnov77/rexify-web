@@ -20,7 +20,7 @@ const dateFormat = new Intl.DateTimeFormat('id-ID', {
 });
 
 function initials(session: Session): string {
-  const source = session.label ?? session.phone_number ?? 'WA';
+  const source = session.label ?? session.phone_number ?? session.phone_number_input ?? 'WA';
   const digits = source.replace(/\D/g, '');
   if (digits.length >= 2) return digits.slice(-2);
   return source.slice(0, 2).toUpperCase();
@@ -49,7 +49,7 @@ export default function SessionCard({
           <div className="session-card__meta">
             <p className="session-card__name">{session.label ?? 'Bot tanpa nama'}</p>
             <p className="session-card__phone mono">
-              {session.phone_number ?? 'Belum terhubung'}
+              {session.phone_number ?? session.phone_number_input ?? 'Belum terhubung'}
             </p>
           </div>
         </div>

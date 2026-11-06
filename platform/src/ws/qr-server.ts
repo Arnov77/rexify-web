@@ -4,7 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import type { SocketStream } from '@fastify/websocket';
 import QRCode from 'qrcode';
 import WebSocket, { type RawData } from 'ws';
-import { instanceConnectedPath, instanceQrPath } from '../paths';
+import { instanceConnectedPath, instancePhonePath, instanceQrPath } from '../paths';
 import { botRunnerStreamUrl } from '../session/bot-runner-client';
 import { isRemoteMode } from '../session/pm2-manager';
 import { getSession, syncStatus } from '../session/store';
@@ -44,6 +44,11 @@ async function readQr(sessionId: string): Promise<string | null> {
 
 async function readPairing(sessionId: string): Promise<string | null> {
   return readTextFile(instancePairingPath(sessionId));
+}
+
+// Nomor WhatsApp asli yang ditulis bot saat connection === 'open'.
+async function readPhone(sessionId: string): Promise<string | null> {
+  return readTextFile(instancePhonePath(sessionId));
 }
 
 export default async function qrServer(app: FastifyInstance): Promise<void> {
@@ -128,7 +133,7 @@ export default async function qrServer(app: FastifyInstance): Promise<void> {
             }
 
             if (message.type === 'connected') {
-              await syncStatus(sessionId, 'active');
+              await syncStatus(sessionId, 'active', await readPhone(sessionId));
               send({ type: 'connected' });
               stopRemote();
               socket.close(1000, 'connected');
@@ -178,7 +183,7 @@ export default async function qrServer(app: FastifyInstance): Promise<void> {
 
         // Cek paling awal: begitu bot terhubung, hentikan polling tanpa menunggu qr.txt hilang.
         if (existsSync(instanceConnectedPath(sessionId))) {
-          await syncStatus(sessionId, 'active');
+          await syncStatus(sessionId, 'active', await readPhone(sessionId));
           finishConnected();
           return;
         }
@@ -188,7 +193,7 @@ export default async function qrServer(app: FastifyInstance): Promise<void> {
 
         if (!qr && lastQr !== null) {
           // Bot menghapus qr.txt setelah pairing berhasil (SPEC § WebSocket — QR Streaming).
-          await syncStatus(sessionId, 'active');
+          await syncStatus(sessionId, 'active', await readPhone(sessionId));
           finishConnected();
           return;
         }

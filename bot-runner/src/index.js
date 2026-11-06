@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs'
-import { copyFile, cp, mkdir, readdir, rm, symlink, writeFile } from 'node:fs/promises'
+import { copyFile, cp, mkdir, readdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import Fastify from 'fastify'
 import websocket from '@fastify/websocket'
@@ -84,10 +84,20 @@ function signalPath(sessionId, name) {
     return path.join(instanceDir(sessionId), name)
 }
 
-// File sinyal hidup-mati bot: connected.txt ditulis core saat connection === 'open'.
+// File sinyal hidup-mati bot: connected.txt ditulis core saat connection === 'open',
+// phone.txt berisi nomor WhatsApp yang benar-benar terhubung.
 async function clearSignalFiles(sessionId) {
-    for (const name of ['qr.txt', 'pairing.txt', 'connected.txt']) {
+    for (const name of ['qr.txt', 'pairing.txt', 'connected.txt', 'phone.txt']) {
         await rm(signalPath(sessionId, name), { force: true })
+    }
+}
+
+async function readSignal(sessionId, name) {
+    try {
+        const text = (await readFile(signalPath(sessionId, name), 'utf8')).trim()
+        return text || null
+    } catch {
+        return null
     }
 }
 
@@ -193,10 +203,12 @@ app.get('/status/:sessionId', requireAuth, async (request, reply) => {
 
     try {
         const status = await statusBot(sessionId)
-        // connected = proses online DAN bot sudah menulis connected.txt (WhatsApp terhubung).
+        const connected = status === 'online' && existsSync(signalPath(sessionId, 'connected.txt'))
+        // Nomor asli hanya dikirim kalau bot benar-benar terhubung.
         return {
             status,
-            connected: status === 'online' && existsSync(signalPath(sessionId, 'connected.txt')),
+            connected,
+            phone: connected ? await readSignal(sessionId, 'phone.txt') : null,
         }
     } catch (error) {
         return internalError(request, reply, error)

@@ -152,6 +152,24 @@ export default function SessionDetail() {
     void load();
   }, [load]);
 
+  // Status bot bisa berubah tanpa aksi user (reconnect otomatis, proses mati), jadi status
+  // disegarkan berkala tanpa mengambil ulang config.
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      void (async () => {
+        try {
+          const detail = await getSession(sessionId);
+          setSession(detail.session);
+          setPm2(detail.pm2);
+        } catch {
+          // Diamkan: percobaan berikutnya menyusul.
+        }
+      })();
+    }, 15_000);
+
+    return () => window.clearInterval(timer);
+  }, [sessionId]);
+
   async function handleConnect() {
     setBusy(true);
     try {
@@ -278,7 +296,7 @@ export default function SessionDetail() {
               <div>
                 <h2 className="detail-header__name">{session.label ?? 'Bot tanpa nama'}</h2>
                 <p className="detail-header__phone mono">
-                  {session.phone_number ?? 'Belum terhubung'}
+                  {session.phone_number ?? session.phone_number_input ?? 'Belum terhubung'}
                 </p>
               </div>
               <StatusBadge status={session.status} />
