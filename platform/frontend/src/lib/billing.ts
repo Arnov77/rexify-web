@@ -8,7 +8,7 @@ export const BILLING_PLAN_INFO = {
 
 export type BillingPlan = keyof typeof BILLING_PLAN_INFO;
 
-export type BillingTransactionStatus = 'pending' | 'success' | 'failed';
+export type BillingTransactionStatus = 'pending' | 'success' | 'failed' | 'cancelled' | 'expired';
 
 export interface BillingTransaction {
   id: string;

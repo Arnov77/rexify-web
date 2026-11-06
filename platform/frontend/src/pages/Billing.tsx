@@ -32,6 +32,8 @@ const STATUS_LABEL: Record<string, string> = {
   pending: 'Menunggu',
   success: 'Berhasil',
   failed: 'Gagal',
+  cancelled: 'Dibatalkan',
+  expired: 'Kedaluwarsa',
 };
 
 function formatDate(value: string | null): string {
@@ -52,6 +54,10 @@ function billingBadge(status: string): { label: string; className: string } {
 
   if (status === 'success') return { label, className: 'billing-badge billing-badge--success' };
   if (status === 'failed') return { label, className: 'billing-badge billing-badge--failed' };
+  // Dibatalkan / kedaluwarsa bukan kegagalan pembayaran: badge abu, bukan merah.
+  if (status === 'cancelled' || status === 'expired') {
+    return { label, className: 'billing-badge billing-badge--cancelled' };
+  }
   return { label, className: 'billing-badge billing-badge--pending' };
 }
 

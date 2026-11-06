@@ -8,7 +8,7 @@ const MAX_HISTORY = 10;
 // QR Midtrans kadaluarsa ~15 menit; transaksi pending yang lebih tua dianggap hangus.
 const PENDING_WINDOW = '15 minutes';
 
-type TransactionStatus = 'pending' | 'success' | 'failed';
+type TransactionStatus = 'pending' | 'success' | 'failed' | 'cancelled' | 'expired';
 
 interface TransactionRow {
   id: string;
@@ -61,16 +61,27 @@ function isPaidStatus(status: string, fraudStatus: string): boolean {
   return status === 'capture' && (fraudStatus === '' || fraudStatus === 'accept');
 }
 
-function isFailedStatus(status: string): boolean {
-  return status === 'expire' || status === 'cancel' || status === 'deny';
+// Status akhir untuk notifikasi non-lunas: dibedakan supaya riwayat tidak menyebut
+// pembatalan user sebagai kegagalan pembayaran.
+function finalStatusFor(transactionStatus: string): TransactionStatus | null {
+  if (transactionStatus === 'expire') return 'expired';
+  if (transactionStatus === 'cancel') return 'cancelled';
+  if (transactionStatus === 'deny') return 'failed';
+  return null;
 }
 
-async function markTransactionFailed(orderId: string, paymentType: string | null): Promise<void> {
+// Hanya transaksi yang masih pending yang ditutup, supaya notifikasi telat tidak menimpa
+// transaksi yang sudah sukses.
+async function markTransactionStatus(
+  orderId: string,
+  status: TransactionStatus,
+  paymentType: string | null,
+): Promise<void> {
   await pool.query(
     `UPDATE transactions
-     SET status = 'failed', payment_type = COALESCE(payment_type, $2), updated_at = now()
+     SET status = $2, payment_type = COALESCE(payment_type, $3), updated_at = now()
      WHERE order_id = $1 AND status = 'pending'`,
-    [orderId, paymentType],
+    [orderId, status, paymentType],
   );
 }
 
@@ -176,8 +187,9 @@ export default async function billingRoutes(app: FastifyInstance): Promise<void>
 
     if (isBillingPlan(transaction.plan) && isPaidStatus(transactionStatus, fraudStatus)) {
       await applyPaymentSuccess(orderId, transaction.plan, midtransTransactionId, paymentType);
-    } else if (isFailedStatus(transactionStatus)) {
-      await markTransactionFailed(orderId, paymentType);
+    } else {
+      const finalStatus = finalStatusFor(transactionStatus);
+      if (finalStatus) await markTransactionStatus(orderId, finalStatus, paymentType);
     }
 
     // Midtrans butuh 200 untuk semua notifikasi valid, kalau tidak dia retry terus.
@@ -221,9 +233,14 @@ export default async function billingRoutes(app: FastifyInstance): Promise<void>
         });
       }
 
-      // Pending dari sebelum migrasi 006 (QR tidak tersimpan): tutup, lalu buat transaksi baru.
+      // Pending dari sebelum migrasi 006 (QR tidak tersimpan): tutup sebagai kedaluwarsa,
+      // lalu buat transaksi baru.
       if (pendingTransaction) {
-        await markTransactionFailed(pendingTransaction.order_id, pendingTransaction.payment_type);
+        await markTransactionStatus(
+          pendingTransaction.order_id,
+          'expired',
+          pendingTransaction.payment_type,
+        );
       }
 
       const amount = BILLING_PLANS[plan].amount;
@@ -341,7 +358,8 @@ export default async function billingRoutes(app: FastifyInstance): Promise<void>
         request.log.warn({ err, order_id: orderId }, '[billing] gagal cancel transaksi di Midtrans');
       }
 
-      await markTransactionFailed(orderId, transaction.payment_type);
+      // Status akhir 'cancelled' (bukan 'failed') supaya riwayat jujur: user yang membatalkan.
+      await markTransactionStatus(orderId, 'cancelled', transaction.payment_type);
 
       return reply.code(200).send({ cancelled: true, order_id: orderId });
     });

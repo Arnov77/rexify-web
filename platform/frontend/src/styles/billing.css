@@ -58,6 +58,11 @@
   color: var(--color-error);
 }
 
+.billing-badge--cancelled {
+  background: var(--color-surface-raised);
+  color: var(--color-text-secondary);
+}
+
 /* ---------- Kartu paket ---------- */
 .billing-plans {
   display: grid;

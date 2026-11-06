@@ -410,7 +410,7 @@ export default function Landing() {
         <div className="landing-container cta-band__inner" data-reveal>
           <div>
             <h2 className="cta-band__title">Siap punya bot WhatsApp sendiri?</h2>
-            <p className="cta-band__sub">Gratis 7 hari.</p>
+            <p className="cta-band__sub">Coba gratis selama 7 hari</p>
           </div>
           <TransitionLink className="landing-btn landing-btn--primary landing-btn--lg" to="/register">
             Mulai Sekarang

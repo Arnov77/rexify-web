@@ -124,8 +124,18 @@ export default function BillingModal({ plan, resume, onClose, onPaid }: BillingM
           setState('success');
           return;
         }
+        if (result.status === 'cancelled') {
+          setError('Pembayaran dibatalkan.');
+          setState('failed');
+          return;
+        }
+        if (result.status === 'expired') {
+          setError('QR Code kadaluarsa, silakan coba lagi.');
+          setState('expired');
+          return;
+        }
         if (result.status === 'failed') {
-          setError('Pembayaran gagal atau dibatalkan.');
+          setError('Pembayaran gagal.');
           setState('failed');
           return;
         }
