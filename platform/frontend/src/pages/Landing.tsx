@@ -258,7 +258,7 @@ export default function Landing() {
 
               <div className="hero__cta">
                 <TransitionLink className="landing-btn landing-btn--primary landing-btn--lg" to="/register">
-                  Mulai Gratis 7 Hari
+                  Mulai Sekarang
                 </TransitionLink>
               </div>
             </div>
