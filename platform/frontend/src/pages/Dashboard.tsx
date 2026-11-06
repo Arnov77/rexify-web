@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import AppLayout from '../components/layout/AppLayout';
 import AddSessionModal from '../components/session/AddSessionModal';
+import ConsolePanel from '../components/session/ConsolePanel';
 import QRModal from '../components/session/QRModal';
 import SessionCard from '../components/session/SessionCard';
 import Button from '../components/ui/Button';
@@ -17,6 +18,7 @@ import {
   disconnectSession,
   getConfig,
   listSessions,
+  restartSession,
 } from '../lib/sessions';
 import type { Session } from '../lib/types';
 import '../styles/dashboard.css';
@@ -38,6 +40,9 @@ export default function Dashboard() {
   const [qrSession, setQrSession] = useState<Session | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Session | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // Bot yang panel log-nya terbuka (satu panel sekaligus, menempel di kartunya).
+  const [logSessionId, setLogSessionId] = useState<string | null>(null);
+  const [restartingId, setRestartingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -135,6 +140,24 @@ export default function Dashboard() {
     }
   }
 
+  async function handleRestart(session: Session) {
+    setRestartingId(session.id);
+    try {
+      await restartSession(session.id);
+      await load();
+      showToast('Bot berhasil direstart', 'success');
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : 'Gagal restart bot', 'error');
+    } finally {
+      setRestartingId(null);
+    }
+  }
+
+  // Satu panel console sekaligus; klik Log pada bot yang sama menutup panelnya.
+  function handleToggleLog(session: Session): void {
+    setLogSessionId((current) => (current === session.id ? null : session.id));
+  }
+
   const runningCount = sessions.filter((session) => RUNNING_STATUSES.has(session.status)).length;
   const quota = limits?.sessions ?? 0;
 
@@ -195,15 +218,24 @@ export default function Dashboard() {
       ) : (
         <div className="session-grid">
           {sessions.map((session) => (
-            <SessionCard
-              key={session.id}
-              session={session}
-              pluginCount={pluginCounts[session.id] ?? null}
-              busy={busyId === session.id}
-              onConnect={handleConnect}
-              onDisconnect={handleDisconnect}
-              onDelete={setDeleteTarget}
-            />
+            <div className="session-grid__item" key={session.id}>
+              <SessionCard
+                session={session}
+                pluginCount={pluginCounts[session.id] ?? null}
+                busy={busyId === session.id}
+                restarting={restartingId === session.id}
+                logOpen={logSessionId === session.id}
+                onConnect={handleConnect}
+                onDisconnect={handleDisconnect}
+                onRestart={handleRestart}
+                onToggleLog={handleToggleLog}
+                onDelete={setDeleteTarget}
+              />
+
+              {logSessionId === session.id && (
+                <ConsolePanel sessionId={session.id} onClose={() => setLogSessionId(null)} />
+              )}
+            </div>
           ))}
         </div>
       )}

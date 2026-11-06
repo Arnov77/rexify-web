@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { IconTrash } from '../icons';
+import { IconRefresh, IconTerminal, IconTrash } from '../icons';
 import Button from '../ui/Button';
 import StatusBadge from './StatusBadge';
 import type { Session } from '../../lib/types';
@@ -8,8 +8,14 @@ interface SessionCardProps {
   session: Session;
   pluginCount: number | null;
   busy: boolean;
+  // Restart hanya masuk akal untuk bot aktif; loading ditahan di tombolnya sendiri.
+  restarting?: boolean;
+  // Panel console sedang terbuka untuk kartu ini.
+  logOpen?: boolean;
   onConnect: (session: Session) => void;
   onDisconnect: (session: Session) => void;
+  onRestart: (session: Session) => void;
+  onToggleLog: (session: Session) => void;
   onDelete: (session: Session) => void;
 }
 
@@ -30,8 +36,12 @@ export default function SessionCard({
   session,
   pluginCount,
   busy,
+  restarting = false,
+  logOpen = false,
   onConnect,
   onDisconnect,
+  onRestart,
+  onToggleLog,
   onDelete,
 }: SessionCardProps) {
   const isRunning =
@@ -66,6 +76,29 @@ export default function SessionCard({
             Jalankan
           </Button>
         )}
+
+        {/* Restart = stop + spawn ulang; hanya untuk bot yang benar-benar aktif. */}
+        {session.status === 'active' && (
+          <Button
+            variant="ghost"
+            size="sm"
+            loading={restarting}
+            onClick={() => onRestart(session)}
+          >
+            <IconRefresh size={16} />
+            Restart
+          </Button>
+        )}
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onToggleLog(session)}
+          aria-expanded={logOpen}
+        >
+          <IconTerminal size={16} />
+          Log
+        </Button>
 
         <Link className="btn btn--ghost btn--sm" to={`/sessions/${session.id}`}>
           Kelola

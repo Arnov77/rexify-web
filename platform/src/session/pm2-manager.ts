@@ -249,6 +249,19 @@ export async function stopSession(sessionId: string): Promise<void> {
   await syncStatus(sessionId, 'disconnected');
 }
 
+// Restart = stop lalu spawn ulang. Spawn sengaja tidak diganti `pm2 restart` karena
+// config.json dan env (CONNECT_MODE, PHONE_NUMBER, watermark) harus di-generate ulang;
+// di mode 'other' spawn juga mengirim ulang env ke Bot Runner.
+export async function restartSession(sessionId: string): Promise<void> {
+  const session = await getSessionById(sessionId);
+  if (!session) {
+    throw new Error(`session ${sessionId} tidak ditemukan`);
+  }
+
+  await stopSession(sessionId);
+  await spawnSession(session.user_id, sessionId);
+}
+
 export async function destroySession(sessionId: string): Promise<void> {
   if (isRemoteMode()) {
     // Bot Runner yang menghapus folder instance (kecuali sessions/).

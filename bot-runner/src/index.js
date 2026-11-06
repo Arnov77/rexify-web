@@ -5,6 +5,7 @@ import Fastify from 'fastify'
 import websocket from '@fastify/websocket'
 import { authMiddleware } from './auth.js'
 import { watchSession } from './file-watcher.js'
+import { watchSessionLogs } from './logs.js'
 import {
     connectPm2,
     deleteBot,
@@ -271,6 +272,35 @@ app.get('/stream/:sessionId', { websocket: true }, (connection, request) => {
             stopWatcher = null
         }
     })
+})
+
+// Streaming log PM2 ke platform (mode 'other'). Pesan: {type:'history',lines} / {type:'line',data}.
+app.get('/logs/:sessionId', { websocket: true }, (connection, request) => {
+    const socket = connection?.socket ?? connection
+    const secret = String(request.query?.secret ?? '')
+
+    if (!SECRET || secret !== SECRET) {
+        socket.close(1008, 'UNAUTHORIZED')
+        return
+    }
+
+    const sessionId = sessionIdOf(request)
+    if (!sessionId) {
+        socket.close(1008, 'INVALID_SESSION_ID')
+        return
+    }
+
+    const stopWatching = watchSessionLogs(sessionId, (message) => {
+        if (socket.readyState !== 1) return
+        try {
+            socket.send(JSON.stringify(message))
+        } catch (error) {
+            request.log.error(error)
+        }
+    })
+
+    socket.on('close', stopWatching)
+    socket.on('error', stopWatching)
 })
 
 try {

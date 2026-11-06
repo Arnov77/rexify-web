@@ -82,3 +82,10 @@ export function botRunnerStreamUrl(sessionId: string): string {
   const secret = encodeURIComponent(botRunnerSecret());
   return `${base}/stream/${sessionId}?secret=${secret}`;
 }
+
+// URL WebSocket streaming log PM2 (dipakai ws/log-server.ts saat mode 'other').
+export function botRunnerLogsUrl(sessionId: string): string {
+  const base = botRunnerUrl().replace(/^http/, 'ws');
+  const secret = encodeURIComponent(botRunnerSecret());
+  return `${base}/logs/${sessionId}?secret=${secret}`;
+}

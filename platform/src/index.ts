@@ -13,6 +13,7 @@ import { closePool } from './db';
 import { SessionQuotaExceededError } from './session/pm2-manager';
 import { restoreActiveSessions } from './session/restore';
 import sessionRoutes from './session/routes';
+import logServer from './ws/log-server';
 import qrServer from './ws/qr-server';
 
 const PORT = Number(process.env.PORT ?? 3000);
@@ -74,6 +75,7 @@ async function main(): Promise<void> {
   });
 
   await app.register(qrServer);
+  await app.register(logServer);
 
   await restoreActiveSessions();
   await app.listen({ port: PORT, host: '0.0.0.0' });

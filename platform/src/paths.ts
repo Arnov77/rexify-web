@@ -34,6 +34,21 @@ export function instancePhonePath(sessionId: string): string {
   return path.join(instanceDir(sessionId), 'phone.txt');
 }
 
+// PM2 menyimpan log proses di $PM2_HOME/logs (default ~/.pm2/logs).
+// Nama proses bot = rexify-<sessionId> (lihat pm2-manager.ts).
+function pm2LogsDir(): string {
+  const home = process.env.PM2_HOME ?? path.join(process.env.HOME ?? '/root', '.pm2');
+  return path.join(home, 'logs');
+}
+
+export function instanceLogPath(sessionId: string): string {
+  return path.join(pm2LogsDir(), `rexify-${sessionId}-out.log`);
+}
+
+export function instanceErrorLogPath(sessionId: string): string {
+  return path.join(pm2LogsDir(), `rexify-${sessionId}-error.log`);
+}
+
 export function instanceCredsPath(sessionId: string): string {
   return path.join(instanceSessionsDir(sessionId), 'creds.json');
 }

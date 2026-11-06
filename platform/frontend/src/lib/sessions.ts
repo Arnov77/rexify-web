@@ -39,6 +39,13 @@ export function disconnectSession(sessionId: string): Promise<SessionDetail> {
   return apiRequest<SessionDetail>(`/sessions/${sessionId}/disconnect`, { method: 'POST' });
 }
 
+// Restart = stop lalu spawn ulang dengan config terbaru (server yang mengurus urutannya).
+export function restartSession(sessionId: string): Promise<void> {
+  return apiRequest<{ ok: boolean }>(`/sessions/${sessionId}/restart`, { method: 'POST' }).then(
+    () => undefined,
+  );
+}
+
 export function deleteSession(sessionId: string): Promise<void> {
   return apiRequest<{ deleted: boolean }>(`/sessions/${sessionId}`, { method: 'DELETE' }).then(
     () => undefined,

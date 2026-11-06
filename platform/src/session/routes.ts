@@ -5,6 +5,7 @@ import {
   destroySession,
   getSessionRuntime,
   getSessionStatus,
+  restartSession,
   spawnSession,
   stopSession,
 } from './pm2-manager';
@@ -179,6 +180,26 @@ export default async function sessionRoutes(app: FastifyInstance): Promise<void>
       session: await getSession(request.user.id, sessionId),
       pm2: await getSessionStatus(sessionId),
     });
+  });
+
+  app.post('/api/sessions/:sessionId/restart', async (request, reply) => {
+    const { sessionId } = request.params as SessionParams;
+    const session = await getSession(request.user.id, sessionId);
+
+    if (!session) {
+      return reply.code(404).send({ error: 'SESSION_NOT_FOUND', message: 'Session tidak ditemukan' });
+    }
+
+    // Restart hanya masuk akal untuk bot yang sedang jalan.
+    if (session.status !== 'active') {
+      return reply
+        .code(400)
+        .send({ error: 'SESSION_NOT_RUNNING', message: 'Bot tidak sedang berjalan' });
+    }
+
+    await restartSession(sessionId);
+
+    return reply.code(200).send({ ok: true });
   });
 
   app.get('/api/sessions/:sessionId/logs', async (request, reply) => {

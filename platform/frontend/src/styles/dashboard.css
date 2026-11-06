@@ -136,6 +136,7 @@
 
 .session-card__actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-sm);
 }
@@ -184,4 +185,124 @@
   .dashboard-toolbar .btn {
     width: 100%;
   }
+}
+
+/* Kartu + panel console jadi satu item grid, bukan dua kolom terpisah. */
+.session-grid__item {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Console panel ---------- */
+.console-panel {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-top: calc(var(--space-sm) * -1);
+  background: var(--color-bg);
+}
+
+.console-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-surface);
+}
+
+.console-panel__title {
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-secondary);
+}
+
+.console-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.console-panel__btn {
+  height: 24px;
+  padding: 0 var(--space-sm);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-caption);
+  color: var(--color-text-secondary);
+  transition: background var(--duration-fast) var(--ease), color var(--duration-fast) var(--ease);
+}
+
+.console-panel__btn:hover {
+  background: var(--color-surface-raised);
+  color: var(--color-text-primary);
+}
+
+.console-panel__btn--icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  padding: 0;
+}
+
+.console-panel__body {
+  height: 240px;
+  overflow-y: auto;
+  padding: var(--space-sm) var(--space-md);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.console-panel__empty {
+  color: var(--color-text-muted);
+  font-size: var(--text-caption);
+}
+
+.console-line {
+  display: block;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--color-text-primary);
+}
+
+.console-line--error {
+  color: var(--color-error);
+}
+
+.console-line__time {
+  margin-right: var(--space-sm);
+  color: var(--color-text-muted);
+}
+
+.console-panel__footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-md);
+  border-top: 1px solid var(--color-border-subtle);
+  font-size: var(--text-caption);
+  color: var(--color-text-muted);
+}
+
+.console-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.console-status__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: currentColor;
+}
+
+.console-status--on {
+  color: var(--color-success);
+}
+
+.console-status--off {
+  color: var(--color-error);
 }

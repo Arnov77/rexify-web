@@ -127,6 +127,25 @@ export function IconTrash(props: IconProps) {
   );
 }
 
+export function IconRefresh(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M21 12a9 9 0 1 1-3-6.7" />
+      <path d="M21 3v6h-6" />
+    </Svg>
+  );
+}
+
+export function IconTerminal(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="m7 9 3 3-3 3" />
+      <path d="M13 15h4" />
+    </Svg>
+  );
+}
+
 export function IconClose(props: IconProps) {
   return (
     <Svg {...props}>
