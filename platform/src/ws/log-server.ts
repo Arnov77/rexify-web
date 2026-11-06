@@ -9,7 +9,7 @@ import type { SocketStream } from '@fastify/websocket';
 import WebSocket, { type RawData } from 'ws';
 import { instanceErrorLogPath, instanceLogPath } from '../paths';
 import { botRunnerLogsUrl } from '../session/bot-runner-client';
-import { isRemoteMode } from '../session/pm2-manager';
+import { getSessionLogPaths, isRemoteMode } from '../session/pm2-manager';
 import { getSession } from '../session/store';
 import type { JWTPayload } from '../types/auth';
 
@@ -31,6 +31,8 @@ type LogMessage =
 class LogTailer {
   private offset = 0;
   private rest = '';
+  // inode file yang sedang dipantau, untuk mendeteksi file diganti (logrotate).
+  private ino: number | null = null;
 
   constructor(
     private readonly file: string,
@@ -46,7 +48,8 @@ class LogTailer {
 
     const handle = await open(this.file, 'r');
     try {
-      const { size } = await handle.stat();
+      const stats = await handle.stat();
+      const size = stats.size;
       const start = Math.max(0, size - TAIL_BYTES);
       const length = size - start;
       const buffer = Buffer.alloc(length);
@@ -54,6 +57,7 @@ class LogTailer {
 
       // Posisi polling lanjut dari akhir file supaya baris lama tidak dikirim dua kali.
       this.offset = size;
+      this.ino = stats.ino;
 
       const lines = buffer.toString('utf8').split('\n');
       // Baris pertama bisa terpotong kalau start bukan di awal baris.
@@ -73,13 +77,17 @@ class LogTailer {
 
     const handle = await open(this.file, 'r');
     try {
-      const { size } = await handle.stat();
+      const stats = await handle.stat();
+      const size = stats.size;
 
-      // File dirotasi / dikosongkan (pm2 flush): mulai lagi dari awal.
-      if (size < this.offset) {
+      // File diganti (logrotate: inode baru walau ukurannya bisa lebih besar) atau
+      // dikosongkan (pm2 flush): mulai dari awal supaya baris baru tidak terlewat.
+      if ((this.ino !== null && stats.ino !== this.ino) || size < this.offset) {
         this.offset = 0;
         this.rest = '';
       }
+      this.ino = stats.ino;
+
       if (size === this.offset) return [];
 
       const length = size - this.offset;
@@ -95,6 +103,19 @@ class LogTailer {
     } finally {
       await handle.close();
     }
+  }
+}
+
+// PM2 bisa jalan dengan user / PM2_HOME berbeda dari proses platform, jadi tebakan di
+// paths.ts hanya dipakai kalau PM2 tidak melaporkan path log-nya.
+async function resolveLogPaths(sessionId: string): Promise<{ out: string; err: string }> {
+  const fallback = { out: instanceLogPath(sessionId), err: instanceErrorLogPath(sessionId) };
+
+  try {
+    const paths = await getSessionLogPaths(sessionId);
+    return { out: paths.out ?? fallback.out, err: paths.err ?? fallback.err };
+  } catch {
+    return fallback;
   }
 }
 
@@ -182,9 +203,15 @@ export default async function logServer(app: FastifyInstance): Promise<void> {
         return;
       }
 
+      const logPaths = await resolveLogPaths(sessionId);
+      request.log.info(
+        { sessionId, out: logPaths.out, err: logPaths.err, outExists: existsSync(logPaths.out) },
+        'log stream start',
+      );
+
       // out.log dan error.log dipantau bersamaan; baris error diberi prefix [ERR].
-      const out = new LogTailer(instanceLogPath(sessionId));
-      const err = new LogTailer(instanceErrorLogPath(sessionId), '[ERR] ');
+      const out = new LogTailer(logPaths.out);
+      const err = new LogTailer(logPaths.err, '[ERR] ');
 
       const history = [...(await out.history(TAIL_LINES)), ...(await err.history(TAIL_LINES))];
       send({ type: 'history', lines: history });

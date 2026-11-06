@@ -106,7 +106,14 @@ async function pm2Stop(name: string): Promise<void> {
   });
 }
 
-async function pm2Describe(name: string): Promise<{ status: string } | null> {
+interface Pm2Process {
+  status: string;
+  // Path log asli yang dipakai PM2; null kalau daemon tidak melaporkannya.
+  outLogPath: string | null;
+  errLogPath: string | null;
+}
+
+async function pm2Describe(name: string): Promise<Pm2Process | null> {
   const pm2 = await getPm2();
   return new Promise((resolve, reject) => {
     pm2.describe(name, (err, list) => {
@@ -115,9 +122,30 @@ async function pm2Describe(name: string): Promise<{ status: string } | null> {
         return;
       }
       const proc = list && list[0];
-      resolve(proc ? { status: String(proc.pm2_env?.status ?? 'unknown') } : null);
+      if (!proc) {
+        resolve(null);
+        return;
+      }
+
+      const env = proc.pm2_env;
+      resolve({
+        status: String(env?.status ?? 'unknown'),
+        outLogPath: env?.pm_out_log_path ?? null,
+        errLogPath: env?.pm_err_log_path ?? null,
+      });
     });
   });
+}
+
+// Path log sebenarnya menurut PM2. Jauh lebih andal daripada menebak lewat
+// $PM2_HOME / $HOME, karena daemon PM2 bisa jalan sebagai user atau PM2_HOME lain
+// dari proses platform (kasus itu bikin panel menampilkan file log lama).
+export async function getSessionLogPaths(
+  sessionId: string,
+): Promise<{ out: string | null; err: string | null }> {
+  await connectPm2();
+  const proc = await pm2Describe(pm2Name(sessionId));
+  return { out: proc?.outLogPath ?? null, err: proc?.errLogPath ?? null };
 }
 
 export function pm2Name(sessionId: string): string {

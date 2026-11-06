@@ -26,6 +26,25 @@ import '../styles/dashboard.css';
 const RUNNING_STATUSES = new Set(['active', 'connecting', 'qr_pending']);
 // Status bot bisa berubah tanpa aksi user (reconnect otomatis), jadi disegarkan berkala.
 const STATUS_POLL_MS = 15_000;
+// Panel console yang terbuka disimpan supaya tetap terbuka setelah halaman di-refresh.
+const CONSOLE_STORAGE_KEY = 'rexify.console.session';
+
+function readStoredConsole(): string | null {
+  try {
+    return window.localStorage.getItem(CONSOLE_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredConsole(sessionId: string | null): void {
+  try {
+    if (sessionId) window.localStorage.setItem(CONSOLE_STORAGE_KEY, sessionId);
+    else window.localStorage.removeItem(CONSOLE_STORAGE_KEY);
+  } catch {
+    // localStorage bisa diblokir (mode privat); panel tetap jalan tanpa persistensi.
+  }
+}
 
 export default function Dashboard() {
   const { user, limits, logout } = useAuth();
@@ -41,7 +60,7 @@ export default function Dashboard() {
   const [deleteTarget, setDeleteTarget] = useState<Session | null>(null);
   const [deleting, setDeleting] = useState(false);
   // Bot yang panel log-nya terbuka (satu panel sekaligus, menempel di kartunya).
-  const [logSessionId, setLogSessionId] = useState<string | null>(null);
+  const [logSessionId, setLogSessionId] = useState<string | null>(() => readStoredConsole());
   const [restartingId, setRestartingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -155,8 +174,26 @@ export default function Dashboard() {
 
   // Satu panel console sekaligus; klik Log pada bot yang sama menutup panelnya.
   function handleToggleLog(session: Session): void {
-    setLogSessionId((current) => (current === session.id ? null : session.id));
+    setLogSessionId((current) => {
+      const next = current === session.id ? null : session.id;
+      writeStoredConsole(next);
+      return next;
+    });
   }
+
+  function closeLog(): void {
+    setLogSessionId(null);
+    writeStoredConsole(null);
+  }
+
+  // Session bisa hilang (dihapus / beda akun) setelah refresh: jangan biarkan panel yatim.
+  useEffect(() => {
+    if (!logSessionId || sessions.length === 0) return;
+    if (sessions.some((session) => session.id === logSessionId)) return;
+
+    setLogSessionId(null);
+    writeStoredConsole(null);
+  }, [sessions, logSessionId]);
 
   const runningCount = sessions.filter((session) => RUNNING_STATUSES.has(session.status)).length;
   const quota = limits?.sessions ?? 0;
@@ -233,7 +270,7 @@ export default function Dashboard() {
               />
 
               {logSessionId === session.id && (
-                <ConsolePanel sessionId={session.id} onClose={() => setLogSessionId(null)} />
+                <ConsolePanel sessionId={session.id} onClose={closeLog} />
               )}
             </div>
           ))}
