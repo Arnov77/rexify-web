@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { authMiddleware } from '../auth/middleware';
 import { pool } from '../db';
-import { chargeQris, verifyWebhookSignature } from './midtrans';
+import { cancelCharge, chargeQris, verifyWebhookSignature } from './midtrans';
 import { BILLING_PLANS, isBillingPlan, type BillingPlan } from './plans';
 
 const MAX_HISTORY = 10;
@@ -19,6 +19,7 @@ interface TransactionRow {
   status: TransactionStatus;
   midtrans_transaction_id: string | null;
   payment_type: string | null;
+  qr_code_url: string | null;
   created_at: Date;
 }
 
@@ -198,20 +199,31 @@ export default async function billingRoutes(app: FastifyInstance): Promise<void>
         });
       }
 
-      const pending = await pool.query(
-        `SELECT 1 FROM transactions
+      // Paket sama masih pending: kembalikan QR yang sudah tersimpan supaya user bisa
+      // melanjutkan pembayaran (mis. popup tertutup) tanpa charge baru.
+      const pending = await pool.query<TransactionRow>(
+        `SELECT id, user_id, order_id, plan, amount, status, midtrans_transaction_id, payment_type, qr_code_url, created_at
+         FROM transactions
          WHERE user_id = $1::uuid AND plan = $2 AND status = 'pending'
            AND created_at > now() - interval '${PENDING_WINDOW}'
-         LIMIT 1`,
+         ORDER BY created_at DESC LIMIT 1`,
         [request.user.id, plan],
       );
+      const pendingTransaction = pending.rows[0];
 
-      if (pending.rowCount && pending.rowCount > 0) {
-        return reply.code(409).send({
-          error: 'PENDING_TRANSACTION_EXISTS',
-          message:
-            'Masih ada pembayaran yang menunggu untuk paket ini. Selesaikan atau tunggu QR kadaluarsa.',
+      if (pendingTransaction?.qr_code_url) {
+        return reply.code(200).send({
+          order_id: pendingTransaction.order_id,
+          qr_code_url: pendingTransaction.qr_code_url,
+          amount: pendingTransaction.amount,
+          plan_label: BILLING_PLANS[plan].label,
+          reused: true,
         });
+      }
+
+      // Pending dari sebelum migrasi 006 (QR tidak tersimpan): tutup, lalu buat transaksi baru.
+      if (pendingTransaction) {
+        await markTransactionFailed(pendingTransaction.order_id, pendingTransaction.payment_type);
       }
 
       const amount = BILLING_PLANS[plan].amount;
@@ -251,9 +263,17 @@ export default async function billingRoutes(app: FastifyInstance): Promise<void>
 
       await pool.query(
         `INSERT INTO transactions
-           (user_id, order_id, plan, amount, status, midtrans_transaction_id, payment_type)
-         VALUES ($1::uuid, $2, $3, $4, 'pending', $5, $6)`,
-        [request.user.id, orderId, plan, amount, charge.transaction_id, charge.payment_type],
+           (user_id, order_id, plan, amount, status, midtrans_transaction_id, payment_type, qr_code_url)
+         VALUES ($1::uuid, $2, $3, $4, 'pending', $5, $6, $7)`,
+        [
+          request.user.id,
+          orderId,
+          plan,
+          amount,
+          charge.transaction_id,
+          charge.payment_type,
+          charge.qr_code_url,
+        ],
       );
 
       return reply.code(201).send({
@@ -268,7 +288,7 @@ export default async function billingRoutes(app: FastifyInstance): Promise<void>
       const { orderId } = request.params as StatusParams;
 
       const { rows } = await pool.query<TransactionRow>(
-        `SELECT id, user_id, order_id, plan, amount, status, midtrans_transaction_id, payment_type, created_at
+        `SELECT id, user_id, order_id, plan, amount, status, midtrans_transaction_id, payment_type, qr_code_url, created_at
          FROM transactions WHERE order_id = $1 AND user_id = $2::uuid`,
         [orderId, request.user.id],
       );
@@ -284,13 +304,51 @@ export default async function billingRoutes(app: FastifyInstance): Promise<void>
         status: transaction.status,
         plan: transaction.plan,
         amount: transaction.amount,
+        qr_code_url: transaction.qr_code_url,
         created_at: transaction.created_at,
       });
     });
 
+    // Batalkan pembayaran pending: QR di Midtrans dicancel (best effort) lalu row ditandai failed.
+    instance.post('/api/billing/cancel/:orderId', async (request, reply) => {
+      const { orderId } = request.params as StatusParams;
+
+      const { rows } = await pool.query<TransactionRow>(
+        `SELECT id, user_id, order_id, plan, amount, status, midtrans_transaction_id, payment_type, qr_code_url, created_at
+         FROM transactions WHERE order_id = $1 AND user_id = $2::uuid`,
+        [orderId, request.user.id],
+      );
+      const transaction = rows[0];
+
+      if (!transaction) {
+        return reply
+          .code(404)
+          .send({ error: 'TRANSACTION_NOT_FOUND', message: 'Transaksi tidak ditemukan' });
+      }
+
+      if (transaction.status !== 'pending') {
+        return reply.code(409).send({
+          error: 'TRANSACTION_NOT_PENDING',
+          message: 'Transaksi ini tidak sedang menunggu pembayaran',
+        });
+      }
+
+      try {
+        await cancelCharge(orderId);
+      } catch (err) {
+        // Gagal cancel di Midtrans bukan alasan menolak request: transaksi lokal tetap ditutup,
+        // dan kalau ternyata user sudah bayar, webhook settlement yang menang.
+        request.log.warn({ err, order_id: orderId }, '[billing] gagal cancel transaksi di Midtrans');
+      }
+
+      await markTransactionFailed(orderId, transaction.payment_type);
+
+      return reply.code(200).send({ cancelled: true, order_id: orderId });
+    });
+
     instance.get('/api/billing/transactions', async (request) => {
       const { rows } = await pool.query<TransactionRow>(
-        `SELECT id, user_id, order_id, plan, amount, status, midtrans_transaction_id, payment_type, created_at
+        `SELECT id, user_id, order_id, plan, amount, status, midtrans_transaction_id, payment_type, qr_code_url, created_at
          FROM transactions WHERE user_id = $1::uuid
          ORDER BY created_at DESC LIMIT $2`,
         [request.user.id, MAX_HISTORY],
@@ -304,6 +362,7 @@ export default async function billingRoutes(app: FastifyInstance): Promise<void>
           amount: row.amount,
           status: row.status,
           payment_type: row.payment_type,
+          qr_code_url: row.qr_code_url,
           created_at: row.created_at,
         })),
       };

@@ -17,6 +17,8 @@ export interface BillingTransaction {
   amount: number;
   status: BillingTransactionStatus;
   payment_type: string | null;
+  // QR disimpan di DB supaya transaksi pending bisa dilanjutkan dari riwayat.
+  qr_code_url: string | null;
   created_at: string;
 }
 
@@ -25,12 +27,15 @@ export interface ChargeBillingResult {
   qr_code_url: string;
   amount: number;
   plan_label: string;
+  // true = pakai transaksi pending yang sudah ada (bukan charge baru).
+  reused?: boolean;
 }
 
 export interface BillingStatusResult {
   status: BillingTransactionStatus;
   plan: string;
   amount: number;
+  qr_code_url: string | null;
   created_at: string;
 }
 
@@ -49,6 +54,14 @@ export function getBillingHistory(): Promise<BillingTransaction[]> {
   return apiRequest<{ transactions: BillingTransaction[] }>('/billing/transactions').then(
     (data) => data.transactions,
   );
+}
+
+// Tutup transaksi pending: QR di Midtrans dicancel, row ditandai failed.
+export function cancelBilling(orderId: string): Promise<void> {
+  return apiRequest<{ cancelled: boolean }>(
+    `/billing/cancel/${encodeURIComponent(orderId)}`,
+    { method: 'POST' },
+  ).then(() => undefined);
 }
 
 const rupiah = new Intl.NumberFormat('id-ID', {

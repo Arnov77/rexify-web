@@ -21,6 +21,9 @@ const CLOSE_DELAY_MS = 2000;
 
 interface BillingModalProps {
   plan: BillingPlan;
+  // Diisi saat melanjutkan transaksi pending dari riwayat: pakai QR yang sudah ada,
+  // jangan charge baru. createdAt dipakai supaya countdown tetap jujur (QR bisa sudah tua).
+  resume?: { orderId: string; qrCodeUrl: string; createdAt: string };
   onClose: () => void;
   onPaid: () => void;
 }
@@ -32,8 +35,12 @@ function formatCountdown(ms: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-export default function BillingModal({ plan, onClose, onPaid }: BillingModalProps) {
+export default function BillingModal({ plan, resume, onClose, onPaid }: BillingModalProps) {
   const info = BILLING_PLAN_INFO[plan];
+  // Ambil nilai primitif dari resume supaya effect tidak restart gara-gara objek baru tiap render.
+  const resumeOrderId = resume?.orderId ?? null;
+  const resumeQrUrl = resume?.qrCodeUrl ?? null;
+  const resumeCreatedAt = resume?.createdAt ?? null;
 
   const [state, setState] = useState<ModalState>('loading');
   const [orderId, setOrderId] = useState<string | null>(null);
@@ -57,8 +64,23 @@ export default function BillingModal({ plan, onClose, onPaid }: BillingModalProp
     setAttempt((value) => value + 1);
   }, []);
 
-  // Charge baru tiap mount / retry. Hasilnya QR URL yang bisa langsung di-hotlink.
+  // Charge baru tiap mount / retry, kecuali modal dibuka untuk melanjutkan transaksi pending.
   useEffect(() => {
+    if (attempt === 0 && resumeOrderId && resumeQrUrl) {
+      // Hitung sisa waktu dari created_at transaksi, bukan dari saat modal dibuka, supaya
+      // QR yang sudah tua langsung ditandai kadaluarsa.
+      const created = resumeCreatedAt ? new Date(resumeCreatedAt).getTime() : Number.NaN;
+      const expiry = Number.isNaN(created) ? Date.now() + EXPIRY_MS : created + EXPIRY_MS;
+
+      deadline.current = expiry;
+      setRemaining(Math.max(0, expiry - Date.now()));
+      setError(null);
+      setOrderId(resumeOrderId);
+      setQrUrl(resumeQrUrl);
+      setState(expiry <= Date.now() ? 'expired' : 'qr');
+      return;
+    }
+
     let cancelled = false;
     setState('loading');
     setError(null);
@@ -83,7 +105,7 @@ export default function BillingModal({ plan, onClose, onPaid }: BillingModalProp
     return () => {
       cancelled = true;
     };
-  }, [plan, attempt]);
+  }, [plan, attempt, resumeOrderId, resumeQrUrl, resumeCreatedAt]);
 
   const waiting = state === 'qr' || state === 'polling';
 
@@ -248,7 +270,7 @@ export default function BillingModal({ plan, onClose, onPaid }: BillingModalProp
 
         {state !== 'success' && (
           <div className="billing-modal__actions">
-            <Button variant="ghost" size="sm" onClick={onClose}>
+            <Button variant="secondary" size="sm" block onClick={onClose}>
               Batalkan pembayaran
             </Button>
           </div>

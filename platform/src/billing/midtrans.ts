@@ -81,6 +81,27 @@ export async function chargeQris(
   };
 }
 
+// Batalkan transaksi di Midtrans (Core API: POST /v2/{order_id}/cancel).
+// Dipakai saat user membatalkan pembayaran pending; kalau gagal, pemanggil tetap boleh
+// menandai transaksi lokal sebagai failed — webhook settlement nanti tetap menang.
+export async function cancelCharge(orderId: string): Promise<void> {
+  const res = await fetch(`${baseUrl()}/v2/${encodeURIComponent(orderId)}/cancel`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      Authorization: authHeader(),
+    },
+    // Body {} wajib: Midtrans/Fastify menolak request JSON tanpa body.
+    body: JSON.stringify({}),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Midtrans cancel failed: ${res.status} ${text}`);
+  }
+}
+
 // Verifikasi signature webhook dari Midtrans:
 // signature = SHA512(order_id + status_code + gross_amount + server_key)
 export function verifyWebhookSignature(

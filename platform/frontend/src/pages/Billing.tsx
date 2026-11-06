@@ -8,8 +8,10 @@ import { ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import {
   BILLING_PLAN_INFO,
+  cancelBilling,
   formatRupiah,
   getBillingHistory,
+  isBillingPlan,
   planLabel,
   type BillingPlan,
   type BillingTransaction,
@@ -61,6 +63,9 @@ export default function Billing() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<BillingPlan | null>(null);
+  // Transaksi pending yang dibuka ulang dari riwayat (pakai QR lama, tanpa charge baru).
+  const [resumeTarget, setResumeTarget] = useState<BillingTransaction | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   const loadHistory = useCallback(async () => {
     setHistoryError(null);
@@ -83,10 +88,35 @@ export default function Billing() {
 
   const handlePaid = useCallback(async () => {
     setSelectedPlan(null);
+    setResumeTarget(null);
     await refresh();
     await loadHistory();
     showToast('Pembayaran berhasil, plan diperbarui', 'success');
   }, [refresh, loadHistory, showToast]);
+
+  // Lanjutkan transaksi pending: buka modal dengan QR yang sudah tersimpan.
+  function handleResume(transaction: BillingTransaction): void {
+    if (transaction.qr_code_url) {
+      setResumeTarget(transaction);
+      return;
+    }
+
+    // Row lama tanpa QR tersimpan: minta charge lagi; backend menutup pending lama otomatis.
+    setSelectedPlan(isBillingPlan(transaction.plan) ? transaction.plan : 'pro');
+  }
+
+  async function handleCancelHistory(transaction: BillingTransaction): Promise<void> {
+    setCancellingId(transaction.order_id);
+    try {
+      await cancelBilling(transaction.order_id);
+      await loadHistory();
+      showToast('Pembayaran dibatalkan', 'success');
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : 'Gagal membatalkan pembayaran', 'error');
+    } finally {
+      setCancellingId(null);
+    }
+  }
 
   return (
     <AppLayout
@@ -210,6 +240,7 @@ export default function Billing() {
                   <th scope="col">Paket</th>
                   <th scope="col">Nominal</th>
                   <th scope="col">Status</th>
+                  <th scope="col">Aksi</th>
                 </tr>
               </thead>
               <tbody>
@@ -224,6 +255,29 @@ export default function Billing() {
                       <td>
                         <span className={badge.className}>{badge.label}</span>
                       </td>
+                      <td>
+                        {transaction.status === 'pending' ? (
+                          <div className="billing-table__actions">
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => handleResume(transaction)}
+                            >
+                              Lanjutkan
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              loading={cancellingId === transaction.order_id}
+                              onClick={() => void handleCancelHistory(transaction)}
+                            >
+                              Batalkan
+                            </Button>
+                          </div>
+                        ) : (
+                          <span className="caption">-</span>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
@@ -237,6 +291,23 @@ export default function Billing() {
         <BillingModal
           plan={selectedPlan}
           onClose={() => setSelectedPlan(null)}
+          onPaid={() => void handlePaid()}
+        />
+      )}
+
+      {resumeTarget && (
+        <BillingModal
+          plan={isBillingPlan(resumeTarget.plan) ? resumeTarget.plan : 'pro'}
+          resume={
+            resumeTarget.qr_code_url
+              ? {
+                  orderId: resumeTarget.order_id,
+                  qrCodeUrl: resumeTarget.qr_code_url,
+                  createdAt: resumeTarget.created_at,
+                }
+              : undefined
+          }
+          onClose={() => setResumeTarget(null)}
           onPaid={() => void handlePaid()}
         />
       )}
