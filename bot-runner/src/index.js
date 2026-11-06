@@ -111,12 +111,25 @@ app.post('/spawn/:sessionId', requireAuth, async (request, reply) => {
     try {
         const dir = await prepareInstance(sessionId)
 
+        // File qr/pairing/connected adalah sinyal ke watcher di mesin ini, jadi pathnya
+        // selalu milik Bot Runner (path dari platform bisa menunjuk mesin lain).
+        // Sisa file dari percobaan sebelumnya dibuang supaya kode kadaluwarsa tidak terkirim.
+        for (const stale of ['qr.txt', 'pairing.txt', 'connected.txt']) {
+            await rm(path.join(dir, stale), { force: true })
+        }
+
         // config.json digenerate platform (DB tetap di platform) lalu dikirim utuh ke sini.
         if (typeof body.configJson === 'string' && body.configJson) {
             await writeFile(path.join(dir, 'config.json'), body.configJson, 'utf8')
         }
 
-        await spawnBot(sessionId, { SESSION_ID: sessionId, USER_ID: userId, ...extraEnv })
+        await spawnBot(sessionId, {
+            SESSION_ID: sessionId,
+            USER_ID: userId,
+            ...extraEnv,
+            // Ditaruh setelah spread supaya nilai dari platform tidak menimpanya.
+            QR_OUTPUT_PATH: path.join(dir, 'qr.txt'),
+        })
         return { ok: true }
     } catch (error) {
         return internalError(request, reply, error)

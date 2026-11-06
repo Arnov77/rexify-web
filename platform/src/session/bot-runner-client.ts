@@ -12,12 +12,17 @@ function botRunnerSecret(): string {
 }
 
 async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${botRunnerSecret()}`,
+  };
+  // Content-Type hanya dikirim kalau memang ada body: Fastify menolak request ber-
+  // Content-Type application/json dengan body kosong (FST_ERR_CTP_EMPTY_JSON_BODY),
+  // dan itu yang bikin /stop dan /destroy gagal.
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+
   const res = await fetch(`${botRunnerUrl()}${path}`, {
     method,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${botRunnerSecret()}`,
-    },
+    headers,
     body: body === undefined ? undefined : JSON.stringify(body),
   });
 

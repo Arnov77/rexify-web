@@ -18,7 +18,7 @@ interface CreateBody {
   connect_mode?: unknown;
 }
 
-const PHONE_RE = /^\+?\d{10,}$/;
+const PHONE_RE = /^\d{10,15}$/;
 const CONNECT_MODES = ['qr', 'pairing'] as const;
 
 interface SessionParams {
@@ -32,11 +32,16 @@ function parseLabel(body: CreateBody): { ok: true; label: string | null } | { ok
   return { ok: true, label: trimmed.length > 0 ? trimmed : null };
 }
 
-// Spasi, dash, dan titik dari format lokal dibuang dulu supaya "0812-3456-7890" tetap valid.
+// Bot hanya bisa request pairing code dengan format internasional tanpa '+', jadi nomor
+// gaya lokal (0812..., 812..., +62 812...) dinormalisasi ke 62812... sebelum disimpan.
 function normalizePhone(raw: unknown): string | null {
   if (typeof raw !== 'string') return null;
-  const cleaned = raw.replace(/[\s.-]/g, '');
-  return PHONE_RE.test(cleaned) ? cleaned : null;
+
+  let digits = raw.replace(/[^0-9]/g, '');
+  if (digits.startsWith('0')) digits = `62${digits.slice(1)}`;
+  else if (digits.startsWith('8')) digits = `62${digits}`;
+
+  return PHONE_RE.test(digits) ? digits : null;
 }
 
 function parseConnectMode(raw: unknown): ConnectMode | null {
