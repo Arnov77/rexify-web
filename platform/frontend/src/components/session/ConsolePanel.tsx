@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { IconClose } from '../icons';
 import { getToken } from '../../lib/api';
+import { parseAnsi, sliceSpans, stripAnsi, type AnsiSpan } from '../../lib/ansi';
 
 // Batasi memori: simpan 500 baris terakhir, buang 100 sekaligus saat lewat.
 const MAX_LINES = 500;
@@ -15,7 +16,9 @@ interface ConsolePanelProps {
 
 interface LogEntry {
   key: number;
-  line: string;
+  isError: boolean;
+  time: string | null;
+  spans: AnsiSpan[];
 }
 
 type ConnectionState = 'connecting' | 'open' | 'closed';
@@ -24,10 +27,19 @@ type ConnectionState = 'connecting' | 'open' | 'closed';
 const TIME_RE =
   /^(\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?|\d{2}:\d{2}:\d{2})\s*[:\-|]?\s*/;
 
-function splitTimestamp(line: string): { time: string | null; text: string } {
-  const match = TIME_RE.exec(line);
-  if (!match) return { time: null, text: line };
-  return { time: match[1] ?? null, text: line.slice(match[0].length) };
+// Baris bot diawali escape warna (ESC[90m...), jadi timestamp dicari di teks bersih
+// lalu jumlah karakter itu dipotong dari span berwarna.
+function buildEntry(key: number, line: string): LogEntry {
+  const plain = stripAnsi(line);
+  const match = TIME_RE.exec(plain);
+  const offset = match ? match[0].length : 0;
+
+  return {
+    key,
+    isError: plain.trimStart().startsWith('[ERR]'),
+    time: match?.[1] ?? null,
+    spans: sliceSpans(parseAnsi(line), offset),
+  };
 }
 
 export default function ConsolePanel({ sessionId, onClose }: ConsolePanelProps) {
@@ -41,7 +53,7 @@ export default function ConsolePanel({ sessionId, onClose }: ConsolePanelProps) 
 
   const pushLines = useCallback((lines: string[], replace = false) => {
     setEntries((current) => {
-      const added = lines.map((line) => ({ key: nextKey.current++, line }));
+      const added = lines.map((line) => buildEntry(nextKey.current++, line));
       const next = replace ? added : [...current, ...added];
 
       if (next.length <= MAX_LINES) return next;
@@ -131,20 +143,28 @@ export default function ConsolePanel({ sessionId, onClose }: ConsolePanelProps) 
         {entries.length === 0 ? (
           <p className="console-panel__empty">Belum ada log.</p>
         ) : (
-          entries.map((entry) => {
-            const { time, text } = splitTimestamp(entry.line);
-            const isError = entry.line.startsWith('[ERR]');
-
-            return (
-              <span
-                key={entry.key}
-                className={isError ? 'console-line console-line--error' : 'console-line'}
-              >
-                {time && <span className="console-line__time">{time}</span>}
-                <span>{text}</span>
-              </span>
-            );
-          })
+          entries.map((entry) => (
+            <span
+              key={entry.key}
+              className={entry.isError ? 'console-line console-line--error' : 'console-line'}
+            >
+              {entry.time && <span className="console-line__time">{entry.time}</span>}
+              {entry.spans.map((span, index) => (
+                <span
+                  // Span tidak punya id stabil; urutan dalam satu baris sudah tetap.
+                  key={index}
+                  className={span.className || undefined}
+                  style={
+                    span.color || span.background
+                      ? { color: span.color ?? undefined, background: span.background ?? undefined }
+                      : undefined
+                  }
+                >
+                  {span.text}
+                </span>
+              ))}
+            </span>
+          ))
         )}
       </div>
 

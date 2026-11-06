@@ -276,6 +276,23 @@
   color: var(--color-text-muted);
 }
 
+/* Atribut teks hasil urai ANSI SGR. Warna dipasang inline karena nilainya dinamis. */
+.ansi-bold {
+  font-weight: var(--weight-semibold);
+}
+
+.ansi-dim {
+  opacity: 0.7;
+}
+
+.ansi-italic {
+  font-style: italic;
+}
+
+.ansi-underline {
+  text-decoration: underline;
+}
+
 .console-panel__footer {
   display: flex;
   align-items: center;
