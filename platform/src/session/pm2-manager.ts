@@ -175,8 +175,9 @@ export async function spawnSession(userId: string, sessionId: string): Promise<v
     throw new Error(`session ${sessionId} tidak ditemukan`);
   }
 
+  // QR_OUTPUT_PATH tidak ikut di mode 'other': bot menulis qr/pairing/connected.txt di cwd
+  // instance milik Bot Runner, karena path filesystem mesin platform tidak berlaku di sana.
   const botEnv: Record<string, string> = {
-    QR_OUTPUT_PATH: instanceQrPath(sessionId),
     PHONE_NUMBER: session.phone_number_input ?? '',
     CONNECT_MODE: session.connect_mode ?? 'qr',
     // Watermark aktif untuk plan free, tidak ada untuk pro/enterprise
@@ -217,6 +218,7 @@ export async function spawnSession(userId: string, sessionId: string): Promise<v
     env: {
       SESSION_ID: sessionId,
       USER_ID: userId,
+      QR_OUTPUT_PATH: instanceQrPath(sessionId),
       ...botEnv,
     },
   });
