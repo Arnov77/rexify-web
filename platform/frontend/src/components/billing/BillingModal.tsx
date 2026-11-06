@@ -245,6 +245,14 @@ export default function BillingModal({ plan, onClose, onPaid }: BillingModalProp
             </Button>
           </>
         )}
+
+        {state !== 'success' && (
+          <div className="billing-modal__actions">
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              Batalkan pembayaran
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

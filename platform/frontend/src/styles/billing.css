@@ -183,6 +183,16 @@
   color: var(--color-error);
 }
 
+.billing-modal__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
 @media (min-width: 768px) {
   .billing-plans {
     grid-template-columns: repeat(2, minmax(0, 1fr));
