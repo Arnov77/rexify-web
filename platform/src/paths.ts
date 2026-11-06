@@ -24,6 +24,11 @@ export function instanceQrPath(sessionId: string): string {
   return path.join(instanceDir(sessionId), 'qr.txt');
 }
 
+// Bot menulis connected.txt saat connection === 'open' (lihat core/main.js).
+export function instanceConnectedPath(sessionId: string): string {
+  return path.join(instanceDir(sessionId), 'connected.txt');
+}
+
 export function instanceCredsPath(sessionId: string): string {
   return path.join(instanceSessionsDir(sessionId), 'creds.json');
 }

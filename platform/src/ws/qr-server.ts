@@ -4,7 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import type { SocketStream } from '@fastify/websocket';
 import QRCode from 'qrcode';
 import WebSocket, { type RawData } from 'ws';
-import { instanceQrPath } from '../paths';
+import { instanceConnectedPath, instanceQrPath } from '../paths';
 import { botRunnerStreamUrl } from '../session/bot-runner-client';
 import { isRemoteMode } from '../session/pm2-manager';
 import { getSession, syncStatus } from '../session/store';
@@ -28,9 +28,7 @@ function instancePairingPath(sessionId: string): string {
 
 // Bot menulis connected.txt saat connection === 'open'. Di mode pairing qr.txt tidak pernah
 // dibuat (jadi tidak pernah dihapus), maka file ini yang jadi sinyal connect ke platform.
-function instanceConnectedPath(sessionId: string): string {
-  return instanceQrPath(sessionId).replace(/qr\.txt$/, 'connected.txt');
-}
+// Path-nya dipakai bersama session/routes.ts (reconcile status) lewat paths.ts.
 
 async function readTextFile(path: string): Promise<string | null> {
   if (!existsSync(path)) return null;

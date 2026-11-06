@@ -51,9 +51,23 @@ export async function destroySessionRemote(sessionId: string): Promise<void> {
   await call('DELETE', `/destroy/${sessionId}`);
 }
 
+export interface RemoteSessionRuntime {
+  status: string | null;
+  // true kalau proses bot online DAN connected.txt ada (WhatsApp benar-benar terhubung).
+  connected: boolean;
+}
+
 export async function getSessionStatusRemote(sessionId: string): Promise<string | null> {
   const data = await call<{ status: string | null }>('GET', `/status/${sessionId}`);
   return data.status;
+}
+
+export async function getSessionRuntimeRemote(sessionId: string): Promise<RemoteSessionRuntime> {
+  const data = await call<{ status: string | null; connected?: boolean }>(
+    'GET',
+    `/status/${sessionId}`,
+  );
+  return { status: data.status, connected: Boolean(data.connected) };
 }
 
 // URL WebSocket stream QR/pairing di Bot Runner (dipakai ws/qr-server.ts saat mode 'other').

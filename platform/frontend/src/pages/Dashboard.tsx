@@ -22,6 +22,8 @@ import type { Session } from '../lib/types';
 import '../styles/dashboard.css';
 
 const RUNNING_STATUSES = new Set(['active', 'connecting', 'qr_pending']);
+// Status bot bisa berubah tanpa aksi user (reconnect otomatis), jadi disegarkan berkala.
+const STATUS_POLL_MS = 15_000;
 
 export default function Dashboard() {
   const { user, limits, logout } = useAuth();
@@ -64,6 +66,28 @@ export default function Dashboard() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Segarkan hanya kolom status: daftar bot + jumlah plugin tidak perlu di-fetch ulang,
+  // dan hasil reconcile dari server (mis. 'connecting' → 'active') langsung terpakai.
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      void (async () => {
+        try {
+          const fresh = await listSessions();
+          setSessions((current) =>
+            current.map((session) => {
+              const updated = fresh.find((item) => item.id === session.id);
+              return updated ? { ...session, status: updated.status } : session;
+            }),
+          );
+        } catch {
+          // Diamkan: percobaan berikutnya menyusul 15 detik lagi.
+        }
+      })();
+    }, STATUS_POLL_MS);
+
+    return () => window.clearInterval(timer);
+  }, []);
 
   const handleCreated = useCallback(async () => {
     await load();

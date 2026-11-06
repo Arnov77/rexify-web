@@ -9,6 +9,7 @@ import { sessionQuotaFor } from '../config/plans';
 import { pool } from '../db';
 import {
   CORE_DIR,
+  instanceConnectedPath,
   instanceDataDir,
   instanceDir,
   instanceQrPath,
@@ -16,6 +17,7 @@ import {
 } from '../paths';
 import {
   destroySessionRemote,
+  getSessionRuntimeRemote,
   getSessionStatusRemote,
   spawnSessionRemote,
   stopSessionRemote,
@@ -281,4 +283,25 @@ export async function getSessionStatus(sessionId: string): Promise<string | null
   await connectPm2();
   const proc = await pm2Describe(pm2Name(sessionId));
   return proc ? proc.status : null;
+}
+
+export interface SessionRuntime {
+  status: string | null;
+  // true kalau proses bot online DAN connected.txt ada (WhatsApp benar-benar terhubung).
+  connected: boolean;
+}
+
+// Dipakai untuk menyelaraskan status DB: status 'active' hanya bisa dipastikan lewat
+// connected.txt, bukan sekadar proses PM2 hidup.
+export async function getSessionRuntime(sessionId: string): Promise<SessionRuntime> {
+  if (isRemoteMode()) {
+    return getSessionRuntimeRemote(sessionId);
+  }
+
+  await connectPm2();
+  const proc = await pm2Describe(pm2Name(sessionId));
+  return {
+    status: proc ? proc.status : null,
+    connected: existsSync(instanceConnectedPath(sessionId)),
+  };
 }

@@ -80,6 +80,17 @@ async function linkCoreEntries(dir) {
     }
 }
 
+function signalPath(sessionId, name) {
+    return path.join(instanceDir(sessionId), name)
+}
+
+// File sinyal hidup-mati bot: connected.txt ditulis core saat connection === 'open'.
+async function clearSignalFiles(sessionId) {
+    for (const name of ['qr.txt', 'pairing.txt', 'connected.txt']) {
+        await rm(signalPath(sessionId, name), { force: true })
+    }
+}
+
 async function prepareInstance(sessionId) {
     const dir = instanceDir(sessionId)
     await mkdir(dir, { recursive: true })
@@ -114,9 +125,7 @@ app.post('/spawn/:sessionId', requireAuth, async (request, reply) => {
         // File qr/pairing/connected adalah sinyal ke watcher di mesin ini, jadi pathnya
         // selalu milik Bot Runner (path dari platform bisa menunjuk mesin lain).
         // Sisa file dari percobaan sebelumnya dibuang supaya kode kadaluwarsa tidak terkirim.
-        for (const stale of ['qr.txt', 'pairing.txt', 'connected.txt']) {
-            await rm(path.join(dir, stale), { force: true })
-        }
+        await clearSignalFiles(sessionId)
 
         // config.json digenerate platform (DB tetap di platform) lalu dikirim utuh ke sini.
         if (typeof body.configJson === 'string' && body.configJson) {
@@ -144,6 +153,8 @@ app.post('/stop/:sessionId', requireAuth, async (request, reply) => {
 
     try {
         await stopBot(sessionId)
+        // Bot berhenti: file sinyal dibuang supaya platform tidak menganggapnya masih terhubung.
+        await clearSignalFiles(sessionId)
         return { ok: true }
     } catch (error) {
         return internalError(request, reply, error)
@@ -182,7 +193,11 @@ app.get('/status/:sessionId', requireAuth, async (request, reply) => {
 
     try {
         const status = await statusBot(sessionId)
-        return { status }
+        // connected = proses online DAN bot sudah menulis connected.txt (WhatsApp terhubung).
+        return {
+            status,
+            connected: status === 'online' && existsSync(signalPath(sessionId, 'connected.txt')),
+        }
     } catch (error) {
         return internalError(request, reply, error)
     }

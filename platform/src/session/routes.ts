@@ -1,8 +1,21 @@
 import type { FastifyInstance } from 'fastify';
 import { invalidateCache, createDefaultConfig } from '../config/bot-config';
-import type { ConnectMode } from '../types/session';
-import { destroySession, getSessionStatus, spawnSession, stopSession } from './pm2-manager';
-import { createSession, deleteSession, getSession, listPluginLogs, listSessions } from './store';
+import type { ConnectMode, SessionRow } from '../types/session';
+import {
+  destroySession,
+  getSessionRuntime,
+  getSessionStatus,
+  spawnSession,
+  stopSession,
+} from './pm2-manager';
+import {
+  createSession,
+  deleteSession,
+  getSession,
+  listPluginLogs,
+  listSessions,
+  syncStatus,
+} from './store';
 
 const DEFAULT_LOG_LIMIT = 50;
 const MAX_LOG_LIMIT = 200;
@@ -63,6 +76,40 @@ function parsePaging(query: ListQuery): { limit: number; offset: number } {
   return { limit, offset };
 }
 
+// Status di DB hanya diperbarui saat modal QR terbuka. Kalau bot connect setelah itu
+// (reconnect otomatis, restart 515 setelah pairing), DB bisa tertinggal di 'connecting'.
+// Karena itu status diselaraskan dari keadaan asli proses + connected.txt setiap dibaca.
+async function reconcileStatus(sessions: SessionRow[]): Promise<SessionRow[]> {
+  return Promise.all(
+    sessions.map(async (session) => {
+      if (session.status === 'banned') return session;
+
+      try {
+        const runtime = await getSessionRuntime(session.id);
+
+        // Proses bot tidak ada (mis. mati / dibersihkan manual).
+        if (!runtime.status) {
+          if (session.status !== 'disconnected') {
+            await syncStatus(session.id, 'disconnected');
+            return { ...session, status: 'disconnected' as const };
+          }
+          return session;
+        }
+
+        // Proses hidup dan WhatsApp benar-benar terhubung.
+        if (runtime.connected && session.status !== 'active') {
+          await syncStatus(session.id, 'active');
+          return { ...session, status: 'active' as const };
+        }
+      } catch {
+        // Bot Runner / PM2 tidak terjangkau: tampilkan status DB apa adanya.
+      }
+
+      return session;
+    }),
+  );
+}
+
 export default async function sessionRoutes(app: FastifyInstance): Promise<void> {
   app.post('/api/sessions', async (request, reply) => {
     const body = (request.body ?? {}) as CreateBody;
@@ -93,16 +140,19 @@ export default async function sessionRoutes(app: FastifyInstance): Promise<void>
   });
 
   app.get('/api/sessions', async (request) => {
-    return { sessions: await listSessions(request.user.id) };
+    const sessions = await listSessions(request.user.id);
+    return { sessions: await reconcileStatus(sessions) };
   });
 
   app.get('/api/sessions/:sessionId', async (request, reply) => {
     const { sessionId } = request.params as SessionParams;
-    const session = await getSession(request.user.id, sessionId);
+    const found = await getSession(request.user.id, sessionId);
 
-    if (!session) {
+    if (!found) {
       return reply.code(404).send({ error: 'SESSION_NOT_FOUND', message: 'Session tidak ditemukan' });
     }
+
+    const [session] = await reconcileStatus([found]);
 
     return reply.code(200).send({ session, pm2: await getSessionStatus(sessionId) });
   });
