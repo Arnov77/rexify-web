@@ -148,6 +148,10 @@ Dicatat karena SPEC tidak eksplisit:
     `available`, dan `PATCH config` + preset menyaring `commands_disabled` lewat
     `allowedFileSetForPlan()` supaya tidak bisa di-bypass dari request manual. Frontend
     menampilkan badge "perlu upgrade" + link `/billing` untuk entry terkunci.
+33. Console log menggabungkan `out.log` dan `error.log` dengan `mergeChronological()`
+    (urut timestamp, baris error diprefix `[ERR] `), baik untuk history 100 baris terakhir
+    maupun baris live tiap detik. Tanpa ini, error lama selalu muncul di bawah log baru
+    setiap panel console dibuka ulang.
 
 ## Catatan kompatibilitas rex-bot-v2
 

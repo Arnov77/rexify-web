@@ -15,6 +15,7 @@ Khusus WebSocket, secret dikirim lewat query `?secret=...`.
 | DELETE | `/destroy/:sessionId` | Hapus proses + isi instance (folder `sessions/` dipertahankan) |
 | GET | `/status/:sessionId` | `{ "status": "online" \| null }` |
 | GET | `/stream/:sessionId?secret=...` | WebSocket: kirim `{ type: 'qr' \| 'pairing' \| 'connected' }` |
+| GET | `/logs/:sessionId?secret=...` | WebSocket: `{ type: 'history', lines }` lalu `{ type: 'line', data }`. Baris `out.log` dan `error.log` digabung urut timestamp (`mergeChronological()`), jadi error lama tidak menumpuk di bawah log baru |
 | POST | `/config/:sessionId` | Timpa `config.json` instance (atomik). Body: `{ "configJson": "..." }`. Dipakai platform agar toggle command/limit langsung berlaku (hot reload) |
 | POST | `/catalog` | Generate ulang katalog command dari `core/plugins` dan kembalikan JSON-nya (manual/ops) |
 

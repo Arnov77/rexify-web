@@ -26,6 +26,42 @@ type LogMessage =
   | { type: 'history'; lines: string[] }
   | { type: 'line'; data: string };
 
+// Baris PM2 diawali "YYYY-MM-DD HH:MM:SS"; baris error diberi prefix "[ERR] ".
+const LINE_TIME_RE = /^(?:\[ERR\]\s*)?(\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?)/;
+
+function lineTime(line: string): number | null {
+  const match = LINE_TIME_RE.exec(line);
+  if (!match) return null;
+  const parsed = Date.parse(match[1].replace(' ', 'T').replace(',', '.'));
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+/**
+ * Gabungkan baris out.log dan error.log berdasarkan timestamp.
+ * Tanpa ini, 100 baris error lama selalu ditempel di bawah 100 baris out terbaru
+ * (history dikirim ulang tiap panel console dibuka). Baris tanpa timestamp ditaruh
+ * di akhir dengan urutan aslinya supaya tidak hilang.
+ */
+export function mergeChronological(outLines: string[], errLines: string[]): string[] {
+  const tagged = [
+    ...outLines.map((line, index) => ({ line, index, time: lineTime(line) })),
+    ...errLines.map((line, index) => ({
+      line,
+      index: outLines.length + index,
+      time: lineTime(line),
+    })),
+  ];
+
+  tagged.sort((a, b) => {
+    if (a.time === null && b.time === null) return a.index - b.index;
+    if (a.time === null) return 1;
+    if (b.time === null) return -1;
+    return a.time - b.time || a.index - b.index;
+  });
+
+  return tagged.map((item) => item.line);
+}
+
 // Pembaca incremental: simpan offset byte + sisa baris yang belum lengkap, jadi hanya
 // bytes baru yang dibaca tiap tick dan baris yang terpotong tidak dikirim separuh.
 class LogTailer {
@@ -213,7 +249,10 @@ export default async function logServer(app: FastifyInstance): Promise<void> {
       const out = new LogTailer(logPaths.out);
       const err = new LogTailer(logPaths.err, '[ERR] ');
 
-      const history = [...(await out.history(TAIL_LINES)), ...(await err.history(TAIL_LINES))];
+      const history = mergeChronological(
+        await out.history(TAIL_LINES),
+        await err.history(TAIL_LINES),
+      );
       send({ type: 'history', lines: history });
 
       timer = setInterval(() => {
@@ -222,7 +261,7 @@ export default async function logServer(app: FastifyInstance): Promise<void> {
           busy = true;
 
           try {
-            const lines = [...(await out.readNew()), ...(await err.readNew())];
+            const lines = mergeChronological(await out.readNew(), await err.readNew());
             for (const line of lines) send({ type: 'line', data: line });
           } catch (error) {
             // Detail error hanya ke log server; klien tidak perlu tahu isi exception.

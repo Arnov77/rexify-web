@@ -11,6 +11,42 @@ const TAIL_LINES = 100
 // Batas baca awal supaya file log raksasa tidak dibaca utuh.
 const TAIL_BYTES = 64 * 1024
 
+// Baris PM2 diawali "YYYY-MM-DD HH:MM:SS"; baris error diberi prefix "[ERR] ".
+const LINE_TIME_RE = /^(?:\[ERR\]\s*)?(\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?)/
+
+function lineTime(line) {
+    const match = LINE_TIME_RE.exec(line)
+    if (!match) return null
+    const parsed = Date.parse(match[1].replace(' ', 'T').replace(',', '.'))
+    return Number.isNaN(parsed) ? null : parsed
+}
+
+/**
+ * Gabungkan baris out.log dan error.log berdasarkan timestamp.
+ * Tanpa ini, 100 baris error lama selalu ditempel di bawah 100 baris out terbaru
+ * setiap panel console dibuka ulang. Baris tanpa timestamp ditaruh di akhir dengan
+ * urutan aslinya supaya tidak hilang.
+ */
+export function mergeChronological(outLines, errLines) {
+    const tagged = [
+        ...outLines.map((line, index) => ({ line, index, time: lineTime(line) })),
+        ...errLines.map((line, index) => ({
+            line,
+            index: outLines.length + index,
+            time: lineTime(line),
+        })),
+    ]
+
+    tagged.sort((a, b) => {
+        if (a.time === null && b.time === null) return a.index - b.index
+        if (a.time === null) return 1
+        if (b.time === null) return -1
+        return a.time - b.time || a.index - b.index
+    })
+
+    return tagged.map((item) => item.line)
+}
+
 // PM2 menyimpan log di $PM2_HOME/logs (default ~/.pm2/logs).
 function logsDir() {
     const home = process.env.PM2_HOME ?? path.join(process.env.HOME ?? '/root', '.pm2')
@@ -98,7 +134,7 @@ export function watchSessionLogs(sessionId, send) {
     let timer = null
 
     async function sendHistory() {
-        const lines = [...(await out.history(TAIL_LINES)), ...(await err.history(TAIL_LINES))]
+        const lines = mergeChronological(await out.history(TAIL_LINES), await err.history(TAIL_LINES))
         send({ type: 'history', lines })
     }
 
@@ -109,7 +145,7 @@ export function watchSessionLogs(sessionId, send) {
             if (stopped || busy) return
             busy = true
             try {
-                const lines = [...(await out.readNew()), ...(await err.readNew())]
+                const lines = mergeChronological(await out.readNew(), await err.readNew())
                 for (const line of lines) send({ type: 'line', data: line })
             } catch {
                 // Gagal baca sesaat: coba lagi tick berikutnya.
