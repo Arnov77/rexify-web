@@ -1,18 +1,22 @@
 import type { SVGProps } from 'react';
 
-export type IconProps = SVGProps<SVGSVGElement> & { size?: number };
+export type IconProps = SVGProps<SVGSVGElement> & {
+  size?: number;
+  // true = gaya Bootstrap Icons (fill, viewBox 16), false = stroke style (default, viewBox 24).
+  filled?: boolean;
+};
 
-function Svg({ size = 20, children, ...rest }: IconProps) {
+function Svg({ size = 20, filled = false, children, ...rest }: IconProps) {
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.6}
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      viewBox={filled ? '0 0 16 16' : '0 0 24 24'}
+      fill={filled ? 'currentColor' : 'none'}
+      stroke={filled ? 'none' : 'currentColor'}
+      strokeWidth={filled ? undefined : 1.6}
+      strokeLinecap={filled ? undefined : 'round'}
+      strokeLinejoin={filled ? undefined : 'round'}
       aria-hidden="true"
       focusable="false"
       {...rest}
@@ -105,8 +109,8 @@ export function IconMoon(props: IconProps) {
 
 export function IconPlus(props: IconProps) {
   return (
-    <Svg {...props}>
-      <path d="M12 5v14M5 12h14" />
+    <Svg filled {...props}>
+      <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4" />
     </Svg>
   );
 }
@@ -121,35 +125,38 @@ export function IconPencil(props: IconProps) {
 
 export function IconTrash(props: IconProps) {
   return (
-    <Svg {...props}>
-      <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" />
+    <Svg filled {...props}>
+      <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z" />
+      <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z" />
     </Svg>
   );
 }
 
 export function IconRefresh(props: IconProps) {
   return (
-    <Svg {...props}>
-      <path d="M21 12a9 9 0 1 1-3-6.7" />
-      <path d="M21 3v6h-6" />
+    <Svg filled {...props}>
+      <path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41zm-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9z" />
+      <path
+        fillRule="evenodd"
+        d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5.002 5.002 0 0 0 8 3M3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9z"
+      />
     </Svg>
   );
 }
 
 export function IconTerminal(props: IconProps) {
   return (
-    <Svg {...props}>
-      <rect x="3" y="4" width="18" height="16" rx="2" />
-      <path d="m7 9 3 3-3 3" />
-      <path d="M13 15h4" />
+    <Svg filled {...props}>
+      <path d="M6 9a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3A.5.5 0 0 1 6 9M3.854 4.146a.5.5 0 1 0-.708.708L4.793 6.5 3.146 8.146a.5.5 0 1 0 .708.708l2-2a.5.5 0 0 0 0-.708z" />
+      <path d="M2 1a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2zm12 1a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" />
     </Svg>
   );
 }
 
 export function IconClose(props: IconProps) {
   return (
-    <Svg {...props}>
-      <path d="M6 6l12 12M18 6 6 18" />
+    <Svg filled {...props}>
+      <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708" />
     </Svg>
   );
 }

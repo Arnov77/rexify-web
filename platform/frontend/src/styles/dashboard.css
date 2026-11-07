@@ -226,6 +226,10 @@
 }
 
 .console-panel__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
   height: 24px;
   padding: 0 var(--space-sm);
   border-radius: var(--radius-sm);

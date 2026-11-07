@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { IconRefresh } from '../components/icons';
 import AppLayout from '../components/layout/AppLayout';
 import AutoReplyEditor from '../components/session/AutoReplyEditor';
 import PluginToggle from '../components/session/PluginToggle';
@@ -23,6 +24,7 @@ import {
   disconnectSession,
   getConfig,
   getSession,
+  restartSession,
   updateConfig,
 } from '../lib/sessions';
 import type {
@@ -128,90 +130,92 @@ function PremiumPackagesEditor({ packages, onChange }: PremiumPackagesEditorProp
 
   return (
     <div>
-      <table className="pkg-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Label</th>
-            <th>Hari</th>
-            <th>Harga</th>
-            <th>Permanen?</th>
-            <th>Aksi</th>
-          </tr>
-        </thead>
-        <tbody>
-          {packages.length === 0 && (
+      <div className="pkg-table-wrapper">
+        <table className="pkg-table">
+          <thead>
             <tr>
-              <td className="caption" colSpan={6}>
-                Belum ada paket.
-              </td>
+              <th>ID</th>
+              <th>Label</th>
+              <th>Hari</th>
+              <th>Harga</th>
+              <th>Permanen?</th>
+              <th>Aksi</th>
             </tr>
-          )}
-          {packages.map((pkg, index) => (
-            <tr key={index}>
-              <td>
-                <input
-                  className="input pkg-input"
-                  value={pkg.id}
-                  placeholder="1hari"
-                  aria-label={`ID paket ${index + 1}`}
-                  onChange={(event) => patch(index, { id: event.target.value })}
-                />
-              </td>
-              <td>
-                <input
-                  className="input pkg-input"
-                  value={pkg.label}
-                  placeholder="1 Hari"
-                  aria-label={`Label paket ${index + 1}`}
-                  onChange={(event) => patch(index, { label: event.target.value })}
-                />
-              </td>
-              <td>
-                <input
-                  className="input pkg-input pkg-input--sm"
-                  type="number"
-                  min={0}
-                  value={pkg.days}
-                  aria-label={`Hari paket ${index + 1}`}
-                  disabled={pkg.permanent === true}
-                  onChange={(event) => patch(index, { days: Number(event.target.value) || 0 })}
-                />
-              </td>
-              <td>
-                <input
-                  className="input pkg-input pkg-input--sm"
-                  type="number"
-                  min={0}
-                  value={pkg.price}
-                  aria-label={`Harga paket ${index + 1}`}
-                  onChange={(event) => patch(index, { price: Number(event.target.value) || 0 })}
-                />
-              </td>
-              <td>
-                <label className="pkg-toggle">
+          </thead>
+          <tbody>
+            {packages.length === 0 && (
+              <tr>
+                <td className="caption" colSpan={6}>
+                  Belum ada paket.
+                </td>
+              </tr>
+            )}
+            {packages.map((pkg, index) => (
+              <tr key={index}>
+                <td>
                   <input
-                    type="checkbox"
-                    checked={pkg.permanent === true}
-                    onChange={(event) => patch(index, { permanent: event.target.checked })}
-                  />{' '}
-                  Permanen
-                </label>
-              </td>
-              <td>
-                <button
-                  type="button"
-                  className="icon-btn icon-btn--danger"
-                  aria-label={`Hapus paket ${pkg.label || pkg.id || index + 1}`}
-                  onClick={() => remove(index)}
-                >
-                  🗑
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                    className="input pkg-input"
+                    value={pkg.id}
+                    placeholder="1hari"
+                    aria-label={`ID paket ${index + 1}`}
+                    onChange={(event) => patch(index, { id: event.target.value })}
+                  />
+                </td>
+                <td>
+                  <input
+                    className="input pkg-input"
+                    value={pkg.label}
+                    placeholder="1 Hari"
+                    aria-label={`Label paket ${index + 1}`}
+                    onChange={(event) => patch(index, { label: event.target.value })}
+                  />
+                </td>
+                <td>
+                  <input
+                    className="input pkg-input pkg-input--sm"
+                    type="number"
+                    min={0}
+                    value={pkg.days}
+                    aria-label={`Hari paket ${index + 1}`}
+                    disabled={pkg.permanent === true}
+                    onChange={(event) => patch(index, { days: Number(event.target.value) || 0 })}
+                  />
+                </td>
+                <td>
+                  <input
+                    className="input pkg-input pkg-input--sm"
+                    type="number"
+                    min={0}
+                    value={pkg.price}
+                    aria-label={`Harga paket ${index + 1}`}
+                    onChange={(event) => patch(index, { price: Number(event.target.value) || 0 })}
+                  />
+                </td>
+                <td>
+                  <label className="pkg-toggle">
+                    <input
+                      type="checkbox"
+                      checked={pkg.permanent === true}
+                      onChange={(event) => patch(index, { permanent: event.target.checked })}
+                    />{' '}
+                    Permanen
+                  </label>
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    className="icon-btn icon-btn--danger"
+                    aria-label={`Hapus paket ${pkg.label || pkg.id || index + 1}`}
+                    onClick={() => remove(index)}
+                  >
+                    🗑
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       <Button variant="secondary" size="sm" className="pkg-add" onClick={add}>
         + Tambah paket
       </Button>
@@ -328,6 +332,7 @@ export default function SessionDetail() {
   const [tab, setTab] = useState<SessionTab>('autoReply');
   const [settings, setSettings] = useState<CustomSettings | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [restarting, setRestarting] = useState(false);
   const [showSecret, setShowSecret] = useState<Record<SecretKey, boolean>>({
     token_rex: false,
     git_token: false,
@@ -404,6 +409,19 @@ export default function SessionDetail() {
     }
   }
 
+  async function handleRestart() {
+    setRestarting(true);
+    try {
+      await restartSession(sessionId);
+      await load();
+      showToast('Bot berhasil direstart', 'success');
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : 'Gagal restart bot', 'error');
+    } finally {
+      setRestarting(false);
+    }
+  }
+
   async function handlePluginToggle(key: keyof PluginsEnabled, value: boolean) {
     if (!config) return;
 
@@ -475,6 +493,25 @@ export default function SessionDetail() {
           Kembali ke dashboard
         </Link>
       </p>
+
+      {session && (
+        <div className="detail-actions detail-actions--toolbar">
+          <span className="detail-status">
+            <StatusBadge status={session.status} />
+          </span>
+          {session.status === 'active' && (
+            <Button
+              variant="secondary"
+              size="sm"
+              loading={restarting}
+              onClick={() => void handleRestart()}
+            >
+              <IconRefresh size={16} />
+              Restart Bot
+            </Button>
+          )}
+        </div>
+      )}
 
       {loadError && (
         <div className="notice notice--error" role="alert">
