@@ -1,6 +1,14 @@
 // HTTP client ke Bot Runner Agent (mode 'other').
 // Semua fungsi mirror pm2-manager.ts tapi lewat HTTP.
 
+import type { CommandCatalog } from '../types/config';
+
+// Ambil katalog terbaru dari Bot Runner (runner yang menjalankan generator di mesinnya).
+// Dipakai endpoint ops refresh supaya platform tidak perlu scp file manual.
+export async function getCatalogRemote(): Promise<CommandCatalog> {
+  return call<CommandCatalog>('POST', '/catalog');
+}
+
 function botRunnerUrl(): string {
   const url = process.env.BOT_RUNNER_URL?.replace(/\/$/, '');
   if (!url) throw new Error('BOT_RUNNER_URL wajib di-set kalau BOT_RUNNER_MODE=other');

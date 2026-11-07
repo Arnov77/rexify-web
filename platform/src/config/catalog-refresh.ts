@@ -1,8 +1,10 @@
 import { execFile } from 'node:child_process';
 import { existsSync, readdirSync, statSync } from 'node:fs';
+import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { CORE_DIR } from '../paths';
+import { getCatalogRemote } from '../session/bot-runner-client';
 import type { CommandCatalog } from '../types/config';
 import { getCommandCatalog, invalidateCatalogCache } from './catalog';
 
@@ -81,6 +83,48 @@ export async function refreshCatalog(): Promise<CommandCatalog> {
 
   invalidateCatalogCache();
   return getCommandCatalog();
+}
+
+// Tulis katalog ke semua lokasi yang dibaca runtime: source tree dan dist (production).
+// Folder dist hanya ditulis kalau memang ada, supaya dev murni tidak membuat dist palsu.
+async function persistCatalog(catalog: CommandCatalog): Promise<void> {
+  const payload = `${JSON.stringify(catalog, null, 2)}\n`;
+  const targets = new Set<string>([
+    path.resolve(process.cwd(), 'src', 'config', 'commands.catalog.json'),
+    path.join(__dirname, 'commands.catalog.json'),
+  ]);
+
+  const distDir = path.resolve(process.cwd(), 'dist', 'config');
+  if (existsSync(distDir)) targets.add(path.join(distDir, 'commands.catalog.json'));
+
+  for (const target of targets) {
+    await mkdir(path.dirname(target), { recursive: true });
+    await writeFile(target, payload, 'utf8');
+  }
+}
+
+// Mode 'other': generate di mesin Bot Runner, lalu simpan hasilnya di disk platform.
+// Tidak perlu scp manual dan tidak perlu restart karena cache ikut dibuang.
+export async function refreshCatalogFromRunner(): Promise<CommandCatalog> {
+  let remote: CommandCatalog;
+  try {
+    remote = await getCatalogRemote();
+  } catch (err) {
+    throw new CatalogRefreshUnavailableError(
+      `Gagal mengambil katalog dari Bot Runner: ${err instanceof Error ? err.message : err}`,
+    );
+  }
+
+  await persistCatalog(remote);
+  invalidateCatalogCache();
+  return getCommandCatalog();
+}
+
+// Dipakai endpoint ops (header x-catalog-token): mode 'same' jalankan generator lokal,
+// mode 'other' minta katalog ke Bot Runner. Berlaku tanpa restart platform.
+export async function refreshCatalogForOps(): Promise<CommandCatalog> {
+  if (isRemoteCatalogMode()) return refreshCatalogFromRunner();
+  return refreshCatalog();
 }
 
 /** Dipanggil saat boot: plugin berubah tapi katalog belum di-generate ulang. */

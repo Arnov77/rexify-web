@@ -149,6 +149,16 @@ Dicatat karena SPEC tidak eksplisit:
     `available`, dan `PATCH config` + preset menyaring `commands_disabled` lewat
     `allowedFileSetForPlan()` supaya tidak bisa di-bypass dari request manual. Frontend
     menampilkan badge "perlu upgrade" + link `/billing` untuk entry terkunci.
+34. `POST /api/ops/catalog/refresh` (header `x-catalog-token` = env `CATALOG_REFRESH_TOKEN`)
+    membuat ulang katalog tanpa restart: mode `same` menjalankan generator lokal, mode
+    `other` memanggil `POST /catalog` di Bot Runner lalu menulis hasilnya ke
+    `src/config/commands.catalog.json` + `dist/config/commands.catalog.json` (kalau ada).
+    Cache katalog ikut dibuang, jadi user langsung melihat jumlah plugin terbaru. Token
+    kosong = endpoint 503; token salah = 401.
+    Pemakaian harian: `npm run catalog:refresh` (skrip `scripts/refresh-catalog.mjs`) —
+    token dibaca otomatis dari `.env` (`CATALOG_REFRESH_TOKEN`), URL dari `PLATFORM_URL`
+    (default `http://127.0.0.1:3000`). Buat token sekali dengan `openssl rand -hex 32`.
+
 33. Console log menggabungkan `out.log` dan `error.log` dengan `mergeChronological()`
     (urut timestamp, baris error diprefix `[ERR] `), baik untuk history 100 baris terakhir
     maupun baris live tiap detik. Timestamp yang diterima: `YYYY-MM-DD HH:MM:SS` (PM2) dan

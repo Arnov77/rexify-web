@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'node:crypto';
 import Fastify from 'fastify';
 import jwt from '@fastify/jwt';
 import websocket from '@fastify/websocket';
@@ -7,7 +8,11 @@ import billingRoutes from './billing/routes';
 import registerRoutes from './auth/register';
 import verifyRoutes from './auth/verify';
 import { isAccessActive, sessionQuotaFor } from './config/plans';
-import { refreshCatalogIfStale } from './config/catalog-refresh';
+import {
+  CatalogRefreshUnavailableError,
+  refreshCatalogForOps,
+  refreshCatalogIfStale,
+} from './config/catalog-refresh';
 import configRoutes from './config/routes';
 import { ValidationError } from './config/validator';
 import { closePool } from './db';
@@ -63,6 +68,40 @@ async function main(): Promise<void> {
   // Webhook Midtrans harus publik; endpoint charge/status/riwayat memasang authMiddleware
   // sendiri di dalam plugin ini.
   await app.register(billingRoutes);
+
+  // Ops-only: refresh katalog tanpa restart. Butuh header `x-catalog-token` yang sama
+  // dengan env CATALOG_REFRESH_TOKEN. Mode 'other' = generate di Bot Runner lalu file
+  // disimpan di platform; mode 'same' = jalankan generator lokal.
+  app.post('/api/ops/catalog/refresh', async (request, reply) => {
+    const expected = process.env.CATALOG_REFRESH_TOKEN ?? '';
+    if (!expected) {
+      return reply.code(503).send({
+        error: 'OPS_TOKEN_NOT_CONFIGURED',
+        message: 'CATALOG_REFRESH_TOKEN belum di-set',
+      });
+    }
+
+    const provided = String(request.headers['x-catalog-token'] ?? '');
+    const given = Buffer.from(provided);
+    const wanted = Buffer.from(expected);
+    const authorized = given.length === wanted.length && timingSafeEqual(given, wanted);
+    if (!authorized) {
+      return reply.code(401).send({ error: 'UNAUTHORIZED', message: 'Token ops tidak valid' });
+    }
+
+    try {
+      const catalog = await refreshCatalogForOps();
+      return { ok: true, total: catalog.total, generatedAt: catalog.generatedAt };
+    } catch (err) {
+      if (err instanceof CatalogRefreshUnavailableError) {
+        return reply.code(503).send({ error: err.code, message: err.message });
+      }
+      request.log.error(err);
+      return reply
+        .code(500)
+        .send({ error: 'CATALOG_REFRESH_FAILED', message: 'Gagal membuat ulang katalog' });
+    }
+  });
 
   await app.register(async (instance) => {
     instance.addHook('onRequest', authMiddleware);
