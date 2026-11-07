@@ -23,6 +23,10 @@ interface LogEntry {
 
 type ConnectionState = 'connecting' | 'open' | 'closed';
 
+// Cache per session selama halaman hidup: panel yang ditutup lalu dibuka lagi tidak
+// memuat ulang history server, sehingga tombol "Bersihkan" tetap berlaku.
+const sessionCache = new Map<string, LogEntry[]>();
+
 // Log core memakai "HH:MM:SS", log lain (PM2/pino) "YYYY-MM-DD HH:MM:SS".
 const TIME_RE =
   /^(\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?|\d{2}:\d{2}:\d{2})\s*[:\-|]?\s*/;
@@ -43,8 +47,10 @@ function buildEntry(key: number, line: string): LogEntry {
 }
 
 export default function ConsolePanel({ sessionId, onClose }: ConsolePanelProps) {
-  const [entries, setEntries] = useState<LogEntry[]>([]);
+  const [entries, setEntries] = useState<LogEntry[]>(() => sessionCache.get(sessionId) ?? []);
   const [status, setStatus] = useState<ConnectionState>('connecting');
+  // History server hanya dipakai saat panel pertama kali dibuka untuk session ini.
+  const historyUsed = useRef(sessionCache.has(sessionId));
 
   const bodyRef = useRef<HTMLDivElement>(null);
   const nextKey = useRef(1);
@@ -98,6 +104,10 @@ export default function ConsolePanel({ sessionId, onClose }: ConsolePanelProps) 
         };
 
         if (payload.type === 'history' && Array.isArray(payload.lines)) {
+          // Reconnect saat panel dibuka ulang tidak boleh mengembalikan log yang sudah
+          // dibersihkan: history hanya dipakai sekali per session per halaman.
+          if (historyUsed.current) return;
+          historyUsed.current = true;
           pushLines(payload.lines, true);
           return;
         }
@@ -118,6 +128,11 @@ export default function ConsolePanel({ sessionId, onClose }: ConsolePanelProps) 
     if (!body || !stickToBottom.current) return;
     body.scrollTop = body.scrollHeight;
   }, [entries]);
+
+  // Simpan isi panel selama halaman hidup: tutup/buka panel dan "Bersihkan" tetap konsisten.
+  useEffect(() => {
+    sessionCache.set(sessionId, entries);
+  }, [entries, sessionId]);
 
   return (
     <section className="console-panel" aria-label="Console log bot">
