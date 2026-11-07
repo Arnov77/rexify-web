@@ -124,9 +124,14 @@ export default function Dashboard() {
   async function handleConnect(session: Session) {
     setBusyId(session.id);
     try {
-      await connectSession(session.id);
+      const result = await connectSession(session.id);
       await load();
-      setQrSession(session);
+      // Credentials Baileys sudah ada → bot reconnect sendiri tanpa QR/pairing.
+      if (result.session?.has_credentials) {
+        showToast('Bot sedang menghubungkan…', 'success');
+      } else {
+        setQrSession(result.session ?? session);
+      }
     } catch (err) {
       showToast(err instanceof ApiError ? err.message : 'Gagal menjalankan bot', 'error');
     } finally {

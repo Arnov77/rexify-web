@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { IconRefresh, IconTrash } from '../components/icons';
+import { IconClose, IconEdit, IconRefresh, IconTrash } from '../components/icons';
 import AppLayout from '../components/layout/AppLayout';
 import AutoReplyEditor from '../components/session/AutoReplyEditor';
 import CommandAudit from '../components/session/CommandAudit';
@@ -16,13 +16,16 @@ import CommandList from '../components/session/CommandList';
 import QRModal from '../components/session/QRModal';
 import StatusBadge from '../components/session/StatusBadge';
 import Button from '../components/ui/Button';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 import Input from '../components/ui/Input';
 import { useToast } from '../components/ui/Toast';
 import { ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import {
   applyCommandPreset,
+  changePhone,
   connectSession,
+  deleteCredentials,
   disconnectSession,
   getCommandCatalog,
   getConfigAudit,
@@ -318,6 +321,11 @@ export default function SessionDetail() {
   const [settings, setSettings] = useState<CustomSettings | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
   const [restarting, setRestarting] = useState(false);
+  const [deletingCreds, setDeletingCreds] = useState(false);
+  const [confirmDeleteCreds, setConfirmDeleteCreds] = useState(false);
+  const [changePhoneOpen, setChangePhoneOpen] = useState(false);
+  const [newPhone, setNewPhone] = useState('');
+  const [changingPhone, setChangingPhone] = useState(false);
   const [showSecret, setShowSecret] = useState<Record<SecretKey, boolean>>({
     token_rex: false,
     git_token: false,
@@ -385,7 +393,12 @@ export default function SessionDetail() {
       const detail = await connectSession(sessionId);
       setSession(detail.session);
       setPm2(detail.pm2);
-      setQrOpen(true);
+      // Credentials Baileys sudah ada → bot reconnect sendiri tanpa QR/pairing.
+      if (detail.session?.has_credentials) {
+        showToast('Bot sedang menghubungkan…', 'success');
+      } else {
+        setQrOpen(true);
+      }
     } catch (err) {
       showToast(err instanceof ApiError ? err.message : 'Gagal menjalankan bot', 'error');
     } finally {
@@ -410,6 +423,37 @@ export default function SessionDetail() {
       showToast(err instanceof ApiError ? err.message : 'Gagal menghentikan bot', 'error');
     } finally {
       setBusy(false);
+    }
+  }
+
+  // Hapus credentials: bot harus pairing/QR lagi, nomor input tidak berubah.
+  async function handleDeleteCredentials() {
+    setDeletingCreds(true);
+    try {
+      await deleteCredentials(sessionId);
+      await load();
+      showToast('Credentials berhasil dihapus. Connect ulang untuk pairing.', 'success');
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : 'Gagal menghapus credentials', 'error');
+    } finally {
+      setDeletingCreds(false);
+      setConfirmDeleteCreds(false);
+    }
+  }
+
+  // Ganti nomor: credentials lama ikut dihapus server, config.json ditulis ulang.
+  async function handleChangePhone() {
+    setChangingPhone(true);
+    try {
+      await changePhone(sessionId, newPhone);
+      await load();
+      setChangePhoneOpen(false);
+      setNewPhone('');
+      showToast('Nomor berhasil diubah. Connect ulang untuk pairing.', 'success');
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : 'Gagal mengubah nomor', 'error');
+    } finally {
+      setChangingPhone(false);
     }
   }
 
@@ -619,6 +663,19 @@ export default function SessionDetail() {
                   Restart Bot
                 </Button>
               )}
+              <Button
+                variant="ghost"
+                size="sm"
+                loading={deletingCreds}
+                onClick={() => setConfirmDeleteCreds(true)}
+              >
+                <IconTrash size={16} />
+                Hapus Credentials
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setChangePhoneOpen(true)}>
+                <IconEdit size={16} />
+                Ganti Nomor
+              </Button>
             </div>
           </section>
 
@@ -897,6 +954,60 @@ export default function SessionDetail() {
           )}
         </>
       ) : null}
+
+      <ConfirmDialog
+        open={confirmDeleteCreds}
+        title="Hapus credentials?"
+        description="Bot akan disconnect dan perlu pairing ulang saat connect berikutnya. Nomor WhatsApp tidak berubah."
+        confirmLabel="Hapus"
+        busy={deletingCreds}
+        onConfirm={() => void handleDeleteCredentials()}
+        onCancel={() => setConfirmDeleteCreds(false)}
+      />
+
+      {changePhoneOpen && (
+        <div className="dialog-overlay" role="presentation">
+          <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="phone-dialog-title" style={{ maxWidth: 400 }}>
+            <div className="dialog__header">
+              <h2 className="dialog__title" id="phone-dialog-title">
+                Ganti Nomor
+              </h2>
+              <button
+                type="button"
+                className="dialog__close"
+                onClick={() => setChangePhoneOpen(false)}
+                aria-label="Tutup"
+              >
+                <IconClose size={16} />
+              </button>
+            </div>
+            <p className="caption">
+              Credentials lama akan dihapus. Bot perlu pairing ulang dengan nomor baru.
+            </p>
+            <Input
+              label="Nomor WhatsApp baru"
+              placeholder="628123456789"
+              hint="Format internasional tanpa +"
+              inputMode="numeric"
+              value={newPhone}
+              onChange={(event) => setNewPhone(event.target.value.replace(/\D/g, ''))}
+              maxLength={15}
+            />
+            <div className="dialog__actions">
+              <Button variant="ghost" onClick={() => setChangePhoneOpen(false)}>
+                Batal
+              </Button>
+              <Button
+                loading={changingPhone}
+                disabled={newPhone.length < 10}
+                onClick={() => void handleChangePhone()}
+              >
+                Simpan
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {qrOpen && session && (
         <QRModal

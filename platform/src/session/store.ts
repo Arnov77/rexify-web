@@ -91,6 +91,30 @@ export async function listPluginLogs(
   return rows;
 }
 
+// Credentials Baileys dihapus: nomor hasil connect dibuang, input tetap disimpan supaya
+// connect berikutnya memakai nomor yang sama.
+export async function clearConnectedPhone(sessionId: string): Promise<void> {
+  await pool.query(
+    `UPDATE sessions
+     SET phone_number = NULL, status = 'disconnected', updated_at = now()
+     WHERE id = $1::uuid`,
+    [sessionId],
+  );
+}
+
+// Ganti nomor bot: nomor input diganti, hasil connect lama (phone_number) dibuang.
+export async function updatePhoneInput(sessionId: string, phoneNumber: string): Promise<void> {
+  await pool.query(
+    `UPDATE sessions
+     SET phone_number_input = $2,
+         phone_number = NULL,
+         status = 'disconnected',
+         updated_at = now()
+     WHERE id = $1::uuid`,
+    [sessionId, phoneNumber],
+  );
+}
+
 export async function syncStatus(
   sessionId: string,
   status: SessionStatus,

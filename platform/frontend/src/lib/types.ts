@@ -36,6 +36,8 @@ export interface Session {
   connected_at: string | null;
   created_at: string;
   updated_at: string;
+  // true kalau sessions/auth.db sudah ada → reconnect tidak perlu QR/pairing.
+  has_credentials?: boolean;
 }
 
 export type MatchType = 'exact' | 'contains' | 'startswith' | 'regex';

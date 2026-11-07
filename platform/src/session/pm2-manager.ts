@@ -17,6 +17,7 @@ import {
   instanceSessionsDir,
 } from '../paths';
 import {
+  deleteCredentialsRemote,
   destroySessionRemote,
   getSessionRuntimeRemote,
   getSessionStatusRemote,
@@ -330,6 +331,36 @@ export interface SessionRuntime {
   connected: boolean;
   // Nomor WhatsApp asli dari bot (phone.txt), null kalau belum pernah terhubung.
   phone: string | null;
+  // true kalau sessions/auth.db sudah ada → reconnect tidak perlu QR/pairing.
+  credentials: boolean;
+}
+
+// Credentials Baileys disimpan core di ./sessions/auth.db (lihat core/lib/useSQLite.js).
+// Kalau file ini ada, bot bisa reconnect sendiri tanpa scan QR / pairing code.
+export async function hasSessionCredentials(sessionId: string): Promise<boolean> {
+  if (isRemoteMode()) {
+    try {
+      return (await getSessionRuntimeRemote(sessionId)).credentials;
+    } catch {
+      // Bot Runner tidak terjangkau: anggap belum ada supaya user tetap dapat QR.
+      return false;
+    }
+  }
+
+  return existsSync(path.join(instanceSessionsDir(sessionId), 'auth.db'));
+}
+
+// Hapus credentials Baileys (folder sessions/ instance) supaya bot minta pairing/QR lagi.
+export async function removeSessionCredentials(sessionId: string): Promise<void> {
+  if (isRemoteMode()) {
+    await deleteCredentialsRemote(sessionId);
+    return;
+  }
+
+  const dir = instanceSessionsDir(sessionId);
+  if (existsSync(dir)) {
+    await rm(dir, { recursive: true, force: true });
+  }
 }
 
 function readPhoneFile(sessionId: string): string | null {
@@ -357,5 +388,6 @@ export async function getSessionRuntime(sessionId: string): Promise<SessionRunti
     status: proc ? proc.status : null,
     connected: existsSync(instanceConnectedPath(sessionId)),
     phone: readPhoneFile(sessionId),
+    credentials: existsSync(path.join(instanceSessionsDir(sessionId), 'auth.db')),
   };
 }

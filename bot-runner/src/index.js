@@ -256,6 +256,26 @@ app.delete('/destroy/:sessionId', requireAuth, async (request, reply) => {
     }
 })
 
+// Hapus credentials Baileys (folder sessions/) tanpa menghapus instance: bot akan minta
+// pairing/QR lagi saat connect berikutnya. Dipakai platform untuk "Hapus Credentials"
+// dan "Ganti Nomor" di mode 'other'.
+app.delete('/credentials/:sessionId', requireAuth, async (request, reply) => {
+    const sessionId = sessionIdOf(request)
+    if (!sessionId) {
+        return reply.code(400).send({ error: 'INVALID_SESSION_ID' })
+    }
+
+    try {
+        const dir = path.join(instanceDir(sessionId), 'sessions')
+        if (existsSync(dir)) {
+            await rm(dir, { recursive: true, force: true })
+        }
+        return { ok: true }
+    } catch (error) {
+        return internalError(request, reply, error)
+    }
+})
+
 app.get('/status/:sessionId', requireAuth, async (request, reply) => {
     const sessionId = sessionIdOf(request)
     if (!sessionId) {
@@ -270,6 +290,8 @@ app.get('/status/:sessionId', requireAuth, async (request, reply) => {
             status,
             connected,
             phone: connected ? await readSignal(sessionId, 'phone.txt') : null,
+            // Credentials Baileys (SQLite auth) sudah ada → reconnect tidak perlu QR/pairing.
+            credentials: existsSync(path.join(instanceDir(sessionId), 'sessions', 'auth.db')),
         }
     } catch (error) {
         return internalError(request, reply, error)

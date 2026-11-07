@@ -39,12 +39,29 @@ export function getSession(sessionId: string): Promise<SessionDetail> {
   return apiRequest<SessionDetail>(`/sessions/${sessionId}`);
 }
 
+// Response berisi `session.has_credentials`: kalau true, bot reconnect sendiri dan
+// frontend tidak perlu membuka modal QR/pairing.
 export function connectSession(sessionId: string): Promise<SessionDetail> {
   return apiRequest<SessionDetail>(`/sessions/${sessionId}/connect`, { method: 'POST' });
 }
 
 export function disconnectSession(sessionId: string): Promise<SessionDetail> {
   return apiRequest<SessionDetail>(`/sessions/${sessionId}/disconnect`, { method: 'POST' });
+}
+
+// Hapus credentials Baileys: bot akan pairing/QR lagi, nomor input tidak berubah.
+export function deleteCredentials(sessionId: string): Promise<void> {
+  return apiRequest<{ ok: boolean }>(`/sessions/${sessionId}/credentials`, {
+    method: 'DELETE',
+  }).then(() => undefined);
+}
+
+// Ganti nomor bot: credentials lama dihapus di server, nomor input diganti, config di-regenerate.
+export function changePhone(sessionId: string, phoneNumber: string): Promise<void> {
+  return apiRequest<{ ok: boolean }>(`/sessions/${sessionId}/phone`, {
+    method: 'PATCH',
+    body: { phone_number: phoneNumber },
+  }).then(() => undefined);
 }
 
 // Restart = stop lalu spawn ulang dengan config terbaru (server yang mengurus urutannya).

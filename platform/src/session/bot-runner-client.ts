@@ -57,12 +57,19 @@ export async function destroySessionRemote(sessionId: string): Promise<void> {
   await call('DELETE', `/destroy/${sessionId}`);
 }
 
+// Hapus credentials Baileys (folder sessions/ instance) di mesin Bot Runner.
+export async function deleteCredentialsRemote(sessionId: string): Promise<void> {
+  await call('DELETE', `/credentials/${sessionId}`);
+}
+
 export interface RemoteSessionRuntime {
   status: string | null;
   // true kalau proses bot online DAN connected.txt ada (WhatsApp benar-benar terhubung).
   connected: boolean;
   // Nomor WhatsApp asli dari bot (null kalau belum pernah terhubung).
   phone: string | null;
+  // true kalau sessions/auth.db sudah ada → reconnect tidak perlu QR/pairing.
+  credentials: boolean;
 }
 
 export async function getSessionStatusRemote(sessionId: string): Promise<string | null> {
@@ -71,14 +78,17 @@ export async function getSessionStatusRemote(sessionId: string): Promise<string 
 }
 
 export async function getSessionRuntimeRemote(sessionId: string): Promise<RemoteSessionRuntime> {
-  const data = await call<{ status: string | null; connected?: boolean; phone?: string | null }>(
-    'GET',
-    `/status/${sessionId}`,
-  );
+  const data = await call<{
+    status: string | null;
+    connected?: boolean;
+    phone?: string | null;
+    credentials?: boolean;
+  }>('GET', `/status/${sessionId}`);
   return {
     status: data.status,
     connected: Boolean(data.connected),
     phone: data.phone ?? null,
+    credentials: Boolean(data.credentials),
   };
 }
 

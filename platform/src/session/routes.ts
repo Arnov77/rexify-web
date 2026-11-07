@@ -1,21 +1,26 @@
 import type { FastifyInstance } from 'fastify';
 import { invalidateCache, createDefaultConfig } from '../config/bot-config';
+import { applyConfigToBot } from '../config/generator';
 import type { ConnectMode, SessionRow } from '../types/session';
 import {
   destroySession,
   getSessionRuntime,
   getSessionStatus,
+  hasSessionCredentials,
+  removeSessionCredentials,
   restartSession,
   spawnSession,
   stopSession,
 } from './pm2-manager';
 import {
+  clearConnectedPhone,
   createSession,
   deleteSession,
   getSession,
   listPluginLogs,
   listSessions,
   syncStatus,
+  updatePhoneInput,
 } from './store';
 
 const DEFAULT_LOG_LIMIT = 50;
@@ -75,6 +80,11 @@ function parsePaging(query: ListQuery): { limit: number; offset: number } {
   const offset = Number.isFinite(offsetRaw) && offsetRaw > 0 ? Math.floor(offsetRaw) : 0;
 
   return { limit, offset };
+}
+
+// Bot dianggap hidup kalau prosesnya masih connecting/qr_pending/active.
+function isBotRunning(status: string): boolean {
+  return status === 'active' || status === 'connecting' || status === 'qr_pending';
 }
 
 // Status di DB hanya diperbarui saat modal QR terbuka. Kalau bot connect setelah itu
@@ -162,8 +172,13 @@ export default async function sessionRoutes(app: FastifyInstance): Promise<void>
     }
 
     const [session] = await reconcileStatus([found]);
+    // has_credentials = sessions/auth.db sudah ada → reconnect tidak perlu QR/pairing.
+    const hasCredentials = await hasSessionCredentials(sessionId);
 
-    return reply.code(200).send({ session, pm2: await getSessionStatus(sessionId) });
+    return reply.code(200).send({
+      session: { ...session, has_credentials: hasCredentials },
+      pm2: await getSessionStatus(sessionId),
+    });
   });
 
   app.post('/api/sessions/:sessionId/connect', async (request, reply) => {
@@ -176,8 +191,12 @@ export default async function sessionRoutes(app: FastifyInstance): Promise<void>
 
     await spawnSession(request.user.id, sessionId);
 
+    const spawned = await getSession(request.user.id, sessionId);
+    // Frontend memakai flag ini untuk memutuskan: buka modal QR atau langsung tunggu connect.
+    const hasCredentials = await hasSessionCredentials(sessionId);
+
     return reply.code(200).send({
-      session: await getSession(request.user.id, sessionId),
+      session: spawned ? { ...spawned, has_credentials: hasCredentials } : null,
       pm2: await getSessionStatus(sessionId),
     });
   });
@@ -233,6 +252,56 @@ export default async function sessionRoutes(app: FastifyInstance): Promise<void>
       session: await getSession(request.user.id, sessionId),
       pm2: await getSessionStatus(sessionId),
     });
+  });
+
+  // Hapus credentials Baileys: bot harus pairing/QR lagi, nomor input tetap dipakai.
+  app.delete('/api/sessions/:sessionId/credentials', async (request, reply) => {
+    const { sessionId } = request.params as SessionParams;
+    const session = await getSession(request.user.id, sessionId);
+
+    if (!session) {
+      return reply.code(404).send({ error: 'SESSION_NOT_FOUND', message: 'Session tidak ditemukan' });
+    }
+
+    // Bot harus berhenti dulu: file auth SQLite tidak boleh dihapus saat masih dipakai.
+    if (isBotRunning(session.status)) {
+      await stopSession(sessionId);
+    }
+
+    await removeSessionCredentials(sessionId);
+    await clearConnectedPhone(sessionId);
+
+    return reply.code(200).send({ ok: true });
+  });
+
+  // Ganti nomor bot: credentials lama dibuang (nomor beda = auth beda), nomor input diganti.
+  app.patch('/api/sessions/:sessionId/phone', async (request, reply) => {
+    const { sessionId } = request.params as SessionParams;
+    const session = await getSession(request.user.id, sessionId);
+
+    if (!session) {
+      return reply.code(404).send({ error: 'SESSION_NOT_FOUND', message: 'Session tidak ditemukan' });
+    }
+
+    const body = (request.body ?? {}) as { phone_number?: unknown };
+    const phone = normalizePhone(body.phone_number);
+    if (!phone) {
+      return reply.code(400).send({
+        error: 'INVALID_PHONE_NUMBER',
+        message: 'Nomor WhatsApp tidak valid, minimal 10 digit',
+      });
+    }
+
+    if (isBotRunning(session.status)) {
+      await stopSession(sessionId);
+    }
+
+    await removeSessionCredentials(sessionId);
+    await updatePhoneInput(sessionId, phone);
+    // config.json memakai phone_number_input (lihat generator.ts), jadi perlu ditulis ulang.
+    await applyConfigToBot(sessionId);
+
+    return reply.code(200).send({ ok: true });
   });
 
   app.delete('/api/sessions/:sessionId', async (request, reply) => {
