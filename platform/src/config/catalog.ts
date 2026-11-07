@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import type { CommandCatalog, CommandEntry } from '../types/config';
 
@@ -14,22 +14,35 @@ const CATALOG_CANDIDATES = [
 
 let cached: CommandCatalog | null = null;
 
+// Saat mode 'other' katalog disalin manual oleh ops; file di `src/` bisa lebih baru
+// daripada salinan di `dist/` (build lama). Pilih file dengan mtime terbaru supaya
+// salinan baru tidak "kalah" oleh file lama.
 function readCatalogFile(): CommandCatalog | null {
+  let newest: { mtimeMs: number; catalog: CommandCatalog } | null = null;
+
   for (const candidate of CATALOG_CANDIDATES) {
     try {
+      const mtimeMs = statSync(candidate).mtimeMs;
       const raw = readFileSync(candidate, 'utf8');
       const parsed = JSON.parse(raw) as CommandCatalog;
-      return {
-        generatedAt: parsed.generatedAt,
-        source: parsed.source,
-        total: parsed.total,
-        commands: Array.isArray(parsed.commands) ? parsed.commands : [],
-      };
+
+      if (!newest || mtimeMs > newest.mtimeMs) {
+        newest = {
+          mtimeMs,
+          catalog: {
+            generatedAt: parsed.generatedAt,
+            source: parsed.source,
+            total: parsed.total,
+            commands: Array.isArray(parsed.commands) ? parsed.commands : [],
+          },
+        };
+      }
     } catch {
-      // Coba kandidat berikutnya.
+      // Kandidat tidak ada / rusak: lanjut ke berikutnya.
     }
   }
-  return null;
+
+  return newest?.catalog ?? null;
 }
 
 function loadCatalog(): CommandCatalog {
