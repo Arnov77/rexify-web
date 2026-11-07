@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { cp, copyFile, mkdir, readdir, rm, symlink } from 'node:fs/promises';
+import { cp, copyFile, mkdir, rm, symlink } from 'node:fs/promises';
 import path from 'node:path';
 // Type-only: hilang saat compile, jadi tidak ada require('pm2') di runtime cloud.
 import type { StartOptions } from 'pm2';
@@ -292,7 +292,7 @@ export async function restartSession(sessionId: string): Promise<void> {
 
 export async function destroySession(sessionId: string): Promise<void> {
   if (isRemoteMode()) {
-    // Bot Runner yang menghapus folder instance (kecuali sessions/).
+    // Bot Runner yang menghapus seluruh folder instance (termasuk sessions/).
     await destroySessionRemote(sessionId);
     await syncStatus(sessionId, 'disconnected');
     return;
@@ -305,13 +305,10 @@ export async function destroySession(sessionId: string): Promise<void> {
     await pm2Delete(name);
   }
 
+  // Hapus seluruh folder instance, termasuk sessions/ (auth WhatsApp) — bot dihapus total.
   const dir = instanceDir(sessionId);
   if (existsSync(dir)) {
-    for (const entry of await readdir(dir)) {
-      // sessions/ disimpan supaya bot bisa reconnect tanpa scan QR ulang.
-      if (entry === 'sessions') continue;
-      await rm(path.join(dir, entry), { recursive: true, force: true });
-    }
+    await rm(dir, { recursive: true, force: true });
   }
 
   await syncStatus(sessionId, 'disconnected');

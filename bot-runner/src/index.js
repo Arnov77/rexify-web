@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs'
 import { execFile } from 'node:child_process'
-import { copyFile, cp, mkdir, readdir, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises'
+import { copyFile, cp, mkdir, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { promisify } from 'node:util'
 import Fastify from 'fastify'
@@ -244,13 +244,10 @@ app.delete('/destroy/:sessionId', requireAuth, async (request, reply) => {
     try {
         await deleteBot(sessionId)
 
+        // Hapus seluruh folder instance, termasuk sessions/ (auth WhatsApp) — bot dihapus total.
         const dir = instanceDir(sessionId)
         if (existsSync(dir)) {
-            for (const entry of await readdir(dir)) {
-                // sessions/ disimpan supaya bot bisa reconnect tanpa scan QR ulang.
-                if (entry === 'sessions') continue
-                await rm(path.join(dir, entry), { recursive: true, force: true })
-            }
+            await rm(dir, { recursive: true, force: true })
         }
 
         return { ok: true }

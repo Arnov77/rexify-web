@@ -91,7 +91,8 @@ Dicatat karena SPEC tidak eksplisit:
 10. `owner` di `config.json` diisi `phone_number` session; platform tidak menyimpan nomor user.
 11. `validateWelcomeMsg` dan `validatePluginsEnabled` ditambah agar PATCH config bisa memvalidasi
     semua bagian config.
-12. `/disconnect` = PM2 stop; `DELETE` = PM2 delete + bersihkan folder instance kecuali `sessions/`.
+12. `/disconnect` = PM2 stop; `DELETE` = PM2 delete + hapus **seluruh** folder instance (termasuk
+    `sessions/`, jadi bot yang dihapus tidak bisa reconnect tanpa scan QR baru).
 13. Cek kuota mengecualikan session yang sedang di-spawn, supaya `restoreActiveSessions` tidak
     memblokir dirinya sendiri.
 14. Di Windows tanpa hak symlink, link ke `core/` diganti junction/copy. Di Linux tetap symlink.

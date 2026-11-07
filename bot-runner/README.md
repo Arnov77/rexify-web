@@ -12,7 +12,7 @@ Khusus WebSocket, secret dikirim lewat query `?secret=...`.
 | --- | --- | --- |
 | POST | `/spawn/:sessionId` | Buat instance (symlink core/) lalu start PM2. Body: `{ "userId": "...", "env": { ... } }` |
 | POST | `/stop/:sessionId` | Stop proses PM2 |
-| DELETE | `/destroy/:sessionId` | Hapus proses + isi instance (folder `sessions/` dipertahankan) |
+| DELETE | `/destroy/:sessionId` | Hapus proses + seluruh folder instance (termasuk `sessions/`) |
 | GET | `/status/:sessionId` | `{ "status": "online" \| null }` |
 | GET | `/stream/:sessionId?secret=...` | WebSocket: kirim `{ type: 'qr' \| 'pairing' \| 'connected' }` |
 | GET | `/logs/:sessionId?secret=...` | WebSocket: `{ type: 'history', lines }` lalu `{ type: 'line', data }`. Baris `out.log` dan `error.log` digabung urut timestamp (`mergeChronological()`), jadi error lama tidak menumpuk di bawah log baru |
@@ -108,7 +108,7 @@ $REXIFY_ROOT/
     <sessionId>/
       index.js -> ../../core/index.js     # symlink (copy di Windows tanpa hak symlink)
       main.js, handler.js, package.json, plugins/, lib/, node_modules/
-      sessions/                            # auth state WhatsApp (tidak dihapus saat destroy)
+      sessions/                            # auth state WhatsApp (ikut terhapus saat destroy)
       data/                                # db.json bot
       qr.txt / pairing.txt / connected.txt # output yang dipantau file-watcher
 ```
