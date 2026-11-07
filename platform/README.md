@@ -150,8 +150,10 @@ Dicatat karena SPEC tidak eksplisit:
     menampilkan badge "perlu upgrade" + link `/billing` untuk entry terkunci.
 33. Console log menggabungkan `out.log` dan `error.log` dengan `mergeChronological()`
     (urut timestamp, baris error diprefix `[ERR] `), baik untuk history 100 baris terakhir
-    maupun baris live tiap detik. Tanpa ini, error lama selalu muncul di bawah log baru
-    setiap panel console dibuka ulang.
+    maupun baris live tiap detik. PM2 hanya menempel timestamp di baris pertama tiap chunk,
+    jadi baris lanjutan (mis. `╰ Error: ENOENT ...`) mewarisi timestamp baris induknya;
+    baris yang tetap tanpa timestamp (chunk kepotong di awal window) ditaruh di atas.
+    Tanpa ini, error lama selalu muncul di bawah log baru setiap panel console dibuka ulang.
 
 ## Catatan kompatibilitas rex-bot-v2
 

@@ -22,25 +22,42 @@ function lineTime(line) {
 }
 
 /**
+ * PM2 hanya menempel timestamp di baris pertama tiap chunk; baris lanjutan
+ * (mis. "╰ Error: ENOENT ...") tidak punya timestamp. Baris seperti itu mewarisi
+ * timestamp baris sebelumnya dari file yang sama, supaya ikut urutan aslinya dan
+ * tidak menumpuk di paling bawah.
+ */
+function withInheritedTimes(lines) {
+    const times = lines.map((line) => lineTime(line))
+    // Baris pembuka tanpa timestamp (chunk terpotong) ikut timestamp pertama yang ada.
+    let current = times.find((time) => time !== null) ?? null
+
+    return lines.map((line, index) => {
+        const time = times[index]
+        if (time !== null) current = time
+        return { line, time: time ?? current }
+    })
+}
+
+/**
  * Gabungkan baris out.log dan error.log berdasarkan timestamp.
- * Tanpa ini, 100 baris error lama selalu ditempel di bawah 100 baris out terbaru
- * setiap panel console dibuka ulang. Baris tanpa timestamp ditaruh di akhir dengan
- * urutan aslinya supaya tidak hilang.
+ * Tanpa ini, baris error lama selalu ditempel di bawah baris out terbaru
+ * (history dikirim ulang tiap panel console dibuka).
  */
 export function mergeChronological(outLines, errLines) {
     const tagged = [
-        ...outLines.map((line, index) => ({ line, index, time: lineTime(line) })),
-        ...errLines.map((line, index) => ({
-            line,
+        ...withInheritedTimes(outLines).map((item, index) => ({ ...item, index })),
+        ...withInheritedTimes(errLines).map((item, index) => ({
+            ...item,
             index: outLines.length + index,
-            time: lineTime(line),
         })),
     ]
 
     tagged.sort((a, b) => {
+        // Null = baris paling tua di window (chunk kepotong di awal), jadi taruh di atas.
         if (a.time === null && b.time === null) return a.index - b.index
-        if (a.time === null) return 1
-        if (b.time === null) return -1
+        if (a.time === null) return -1
+        if (b.time === null) return 1
         return a.time - b.time || a.index - b.index
     })
 
