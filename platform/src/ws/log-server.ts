@@ -26,14 +26,78 @@ type LogMessage =
   | { type: 'history'; lines: string[] }
   | { type: 'line'; data: string };
 
-// Baris PM2 diawali "YYYY-MM-DD HH:MM:SS"; baris error diberi prefix "[ERR] ".
-const LINE_TIME_RE = /^(?:\[ERR\]\s*)?(\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?)/;
+// Baris log bisa diawali ANSI, prefix "[ERR] ", lalu waktu:
+// "YYYY-MM-DD HH:MM:SS" (PM2) atau "HH:MM:SS" (logger bot core).
+const ANSI_PREFIX_RE = /^(?:\u001b\[[0-9;]*m)+/;
+const LINE_TIME_RE =
+  /^(?:\[ERR\]\s*)?(?:(\d{4})-(\d{2})-(\d{2})[ T])?(\d{2}):(\d{2}):(\d{2})(?:[.,](\d{1,3}))?/;
+// Selisih > 12 jam dianggap lewat tengah malam, bukan urutan terbalik.
+const ROLLOVER_MS = 12 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
-function lineTime(line: string): number | null {
-  const match = LINE_TIME_RE.exec(line);
+interface ParsedTime {
+  time: number;
+  hasDate: boolean;
+}
+
+function parseLineTime(line: string): ParsedTime | null {
+  const match = LINE_TIME_RE.exec(line.replace(ANSI_PREFIX_RE, ''));
   if (!match) return null;
-  const parsed = Date.parse(match[1].replace(' ', 'T').replace(',', '.'));
-  return Number.isNaN(parsed) ? null : parsed;
+
+  const [, year, month, day, hour, minute, second, millis] = match;
+  const ms = millis ? Number(millis.padEnd(3, '0')) : 0;
+
+  if (year && month && day) {
+    const time = new Date(
+      Number(year),
+      Number(month) - 1,
+      Number(day),
+      Number(hour),
+      Number(minute),
+      Number(second),
+      ms,
+    ).getTime();
+    return Number.isNaN(time) ? null : { time, hasDate: true };
+  }
+
+  // Tanpa tanggal: tempel ke tanggal lokal hari ini (koreksi tengah malam di bawah).
+  const now = new Date();
+  const time = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    Number(hour),
+    Number(minute),
+    Number(second),
+    ms,
+  ).getTime();
+  return Number.isNaN(time) ? null : { time, hasDate: false };
+}
+
+// File yang seluruhnya "HH:MM:SS" bisa berisi log kemarin; kalau baris terakhir
+// tampak di masa depan, geser seluruh file ke hari sebelumnya.
+function normalizeTimes(lines: string[]): Array<number | null> {
+  const parsed = lines.map((line) => parseLineTime(line));
+  const onlyTime = parsed.length > 0 && parsed.every((item) => item === null || !item.hasDate);
+
+  let times = parsed.map((item) => item?.time ?? null);
+
+  if (onlyTime) {
+    const last = [...times].reverse().find((time) => time !== null) ?? null;
+    if (last !== null && last > Date.now() + 5 * 60_000) {
+      times = times.map((time) => (time === null ? null : time - DAY_MS));
+    }
+  }
+
+  // Pastikan urutan naik di dalam satu file (baris lewat tengah malam ditambah sehari).
+  let previous: number | null = null;
+  return times.map((time) => {
+    if (time === null) return null;
+    let value = time;
+    while (previous !== null && value < previous - ROLLOVER_MS) value += DAY_MS;
+    previous = Math.max(previous ?? value, value);
+    return value;
+  });
 }
 
 /**
@@ -43,7 +107,7 @@ function lineTime(line: string): number | null {
  * tidak menumpuk di paling bawah.
  */
 function withInheritedTimes(lines: string[]): Array<{ line: string; time: number | null }> {
-  const times = lines.map((line) => lineTime(line));
+  const times = normalizeTimes(lines);
   // Baris pembuka tanpa timestamp (chunk terpotong) ikut timestamp pertama yang ada.
   let current = times.find((time) => time !== null) ?? null;
 
