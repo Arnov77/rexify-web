@@ -12,6 +12,18 @@
     border-color var(--duration-base) var(--ease);
 }
 
+/* Button merender children di dalam <span>; jadikan flex supaya icon + teks
+   punya jarak konsisten (gap .btn hanya berlaku antar anak langsung). */
+.btn > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.btn svg {
+  flex: 0 0 auto;
+}
+
 .btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -59,7 +71,7 @@
 
 .btn--ghost {
   background: transparent;
-  color: var(--color-text-secondary);
+  color: var(--color-text-primary);
 }
 
 .btn--ghost:hover:not(:disabled) {

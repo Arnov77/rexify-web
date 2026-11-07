@@ -78,10 +78,17 @@ ol {
   padding: 0;
 }
 
-img,
-svg {
+img {
   display: block;
   max-width: 100%;
+}
+
+/* SVG default inline-block: icon di dalam teks/tombol sejajar horizontal,
+   bukan menumpuk di atas teks (display: block membuatnya jadi baris sendiri). */
+svg {
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: middle;
 }
 
 :focus-visible {

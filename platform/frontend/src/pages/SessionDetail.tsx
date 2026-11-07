@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { IconRefresh } from '../components/icons';
+import { IconRefresh, IconTrash } from '../components/icons';
 import AppLayout from '../components/layout/AppLayout';
 import AutoReplyEditor from '../components/session/AutoReplyEditor';
 import PluginToggle from '../components/session/PluginToggle';
@@ -152,7 +152,7 @@ function PremiumPackagesEditor({ packages, onChange }: PremiumPackagesEditorProp
             )}
             {packages.map((pkg, index) => (
               <tr key={index}>
-                <td>
+                <td data-label="ID">
                   <input
                     className="input pkg-input"
                     value={pkg.id}
@@ -161,7 +161,7 @@ function PremiumPackagesEditor({ packages, onChange }: PremiumPackagesEditorProp
                     onChange={(event) => patch(index, { id: event.target.value })}
                   />
                 </td>
-                <td>
+                <td data-label="Label">
                   <input
                     className="input pkg-input"
                     value={pkg.label}
@@ -170,7 +170,7 @@ function PremiumPackagesEditor({ packages, onChange }: PremiumPackagesEditorProp
                     onChange={(event) => patch(index, { label: event.target.value })}
                   />
                 </td>
-                <td>
+                <td data-label="Hari">
                   <input
                     className="input pkg-input pkg-input--sm"
                     type="number"
@@ -181,7 +181,7 @@ function PremiumPackagesEditor({ packages, onChange }: PremiumPackagesEditorProp
                     onChange={(event) => patch(index, { days: Number(event.target.value) || 0 })}
                   />
                 </td>
-                <td>
+                <td data-label="Harga">
                   <input
                     className="input pkg-input pkg-input--sm"
                     type="number"
@@ -191,7 +191,7 @@ function PremiumPackagesEditor({ packages, onChange }: PremiumPackagesEditorProp
                     onChange={(event) => patch(index, { price: Number(event.target.value) || 0 })}
                   />
                 </td>
-                <td>
+                <td data-label="Permanen?">
                   <label className="pkg-toggle">
                     <input
                       type="checkbox"
@@ -201,14 +201,14 @@ function PremiumPackagesEditor({ packages, onChange }: PremiumPackagesEditorProp
                     Permanen
                   </label>
                 </td>
-                <td>
+                <td data-label="Aksi">
                   <button
                     type="button"
                     className="icon-btn icon-btn--danger"
                     aria-label={`Hapus paket ${pkg.label || pkg.id || index + 1}`}
                     onClick={() => remove(index)}
                   >
-                    🗑
+                    <IconTrash size={16} />
                   </button>
                 </td>
               </tr>
@@ -494,25 +494,6 @@ export default function SessionDetail() {
         </Link>
       </p>
 
-      {session && (
-        <div className="detail-actions detail-actions--toolbar">
-          <span className="detail-status">
-            <StatusBadge status={session.status} />
-          </span>
-          {session.status === 'active' && (
-            <Button
-              variant="secondary"
-              size="sm"
-              loading={restarting}
-              onClick={() => void handleRestart()}
-            >
-              <IconRefresh size={16} />
-              Restart Bot
-            </Button>
-          )}
-        </div>
-      )}
-
       {loadError && (
         <div className="notice notice--error" role="alert">
           <span>{loadError}</span>
@@ -566,6 +547,16 @@ export default function SessionDetail() {
               ) : (
                 <Button onClick={() => void handleConnect()} loading={busy}>
                   Connect
+                </Button>
+              )}
+              {session.status === 'active' && (
+                <Button
+                  variant="secondary"
+                  loading={restarting}
+                  onClick={() => void handleRestart()}
+                >
+                  <IconRefresh size={16} />
+                  Restart Bot
                 </Button>
               )}
             </div>
