@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useId, useState, type FormEvent, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from 'react';
 import { Link, useParams } from 'react-router-dom';
 import AppLayout from '../components/layout/AppLayout';
 import AutoReplyEditor from '../components/session/AutoReplyEditor';
@@ -21,6 +29,7 @@ import type {
   BotConfig,
   CustomSettings,
   PluginsEnabled,
+  PremiumPackage,
   Session,
   SessionTab,
 } from '../lib/types';
@@ -94,6 +103,197 @@ function SecretField({ label, value, visible, hint, onChange, onToggle }: Secret
         </button>
       </div>
       {hint && <p className="field__hint">{hint}</p>}
+    </div>
+  );
+}
+
+interface PremiumPackagesEditorProps {
+  packages: PremiumPackage[];
+  onChange: (packages: PremiumPackage[]) => void;
+}
+
+// Editor inline daftar paket premium: tiap baris bisa diubah langsung, tanpa tombol simpan sendiri.
+function PremiumPackagesEditor({ packages, onChange }: PremiumPackagesEditorProps) {
+  function patch(index: number, changes: Partial<PremiumPackage>) {
+    onChange(packages.map((pkg, i) => (i === index ? { ...pkg, ...changes } : pkg)));
+  }
+
+  function remove(index: number) {
+    onChange(packages.filter((_, i) => i !== index));
+  }
+
+  function add() {
+    onChange([...packages, { id: '', label: '', days: 0, price: 0 }]);
+  }
+
+  return (
+    <div>
+      <table className="pkg-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Label</th>
+            <th>Hari</th>
+            <th>Harga</th>
+            <th>Permanen?</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          {packages.length === 0 && (
+            <tr>
+              <td className="caption" colSpan={6}>
+                Belum ada paket.
+              </td>
+            </tr>
+          )}
+          {packages.map((pkg, index) => (
+            <tr key={index}>
+              <td>
+                <input
+                  className="input pkg-input"
+                  value={pkg.id}
+                  placeholder="1hari"
+                  aria-label={`ID paket ${index + 1}`}
+                  onChange={(event) => patch(index, { id: event.target.value })}
+                />
+              </td>
+              <td>
+                <input
+                  className="input pkg-input"
+                  value={pkg.label}
+                  placeholder="1 Hari"
+                  aria-label={`Label paket ${index + 1}`}
+                  onChange={(event) => patch(index, { label: event.target.value })}
+                />
+              </td>
+              <td>
+                <input
+                  className="input pkg-input pkg-input--sm"
+                  type="number"
+                  min={0}
+                  value={pkg.days}
+                  aria-label={`Hari paket ${index + 1}`}
+                  disabled={pkg.permanent === true}
+                  onChange={(event) => patch(index, { days: Number(event.target.value) || 0 })}
+                />
+              </td>
+              <td>
+                <input
+                  className="input pkg-input pkg-input--sm"
+                  type="number"
+                  min={0}
+                  value={pkg.price}
+                  aria-label={`Harga paket ${index + 1}`}
+                  onChange={(event) => patch(index, { price: Number(event.target.value) || 0 })}
+                />
+              </td>
+              <td>
+                <label className="pkg-toggle">
+                  <input
+                    type="checkbox"
+                    checked={pkg.permanent === true}
+                    onChange={(event) => patch(index, { permanent: event.target.checked })}
+                  />{' '}
+                  Permanen
+                </label>
+              </td>
+              <td>
+                <button
+                  type="button"
+                  className="icon-btn icon-btn--danger"
+                  aria-label={`Hapus paket ${pkg.label || pkg.id || index + 1}`}
+                  onClick={() => remove(index)}
+                >
+                  🗑
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <Button variant="secondary" size="sm" className="pkg-add" onClick={add}>
+        + Tambah paket
+      </Button>
+    </div>
+  );
+}
+
+interface WhitelistChipEditorProps {
+  values: string[];
+  placeholder: string;
+  sanitize: (raw: string) => string;
+  onChange: (values: string[]) => void;
+}
+
+// Chip editor antilink: tambah lewat input kecil inline, konfirmasi dengan Enter atau blur.
+function WhitelistChipEditor({
+  values,
+  placeholder,
+  sanitize,
+  onChange,
+}: WhitelistChipEditorProps) {
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (adding) inputRef.current?.focus();
+  }, [adding]);
+
+  function commit() {
+    const value = sanitize(draft);
+    if (value && !values.includes(value)) {
+      onChange([...values, value]);
+    }
+    setDraft('');
+    setAdding(false);
+  }
+
+  function cancel() {
+    setDraft('');
+    setAdding(false);
+  }
+
+  return (
+    <div className="chip-group">
+      {values.map((value, index) => (
+        <span className="chip" key={`${value}-${index}`}>
+          {value}
+          <button
+            type="button"
+            className="chip__remove"
+            aria-label={`Hapus ${value}`}
+            onClick={() => onChange(values.filter((item) => item !== value))}
+          >
+            ✕
+          </button>
+        </span>
+      ))}
+      {adding ? (
+        <input
+          ref={inputRef}
+          className="chip-add-input"
+          value={draft}
+          placeholder={placeholder}
+          aria-label={`Tambah ${placeholder}`}
+          onChange={(event) => setDraft(event.target.value)}
+          onBlur={commit}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              commit();
+            } else if (event.key === 'Escape') {
+              event.preventDefault();
+              cancel();
+            }
+          }}
+        />
+      ) : (
+        <Button variant="ghost" size="sm" onClick={() => setAdding(true)}>
+          + Tambah
+        </Button>
+      )}
     </div>
   );
 }
@@ -523,6 +723,36 @@ export default function SessionDetail() {
                         onChange={(event) =>
                           updateSetting('limit_premium', Number(event.target.value) || 0)
                         }
+                      />
+                    </div>
+                  </fieldset>
+
+                  <fieldset className="settings-group">
+                    <legend className="settings-group__title">Paket premium</legend>
+                    <PremiumPackagesEditor
+                      packages={settings.premium_packages ?? []}
+                      onChange={(next) => updateSetting('premium_packages', next)}
+                    />
+                  </fieldset>
+
+                  <fieldset className="settings-group">
+                    <legend className="settings-group__title">Antilink whitelist</legend>
+                    <div className="whitelist-section">
+                      <span className="whitelist-label">Domain</span>
+                      <WhitelistChipEditor
+                        values={settings.antilink_whitelist_domain ?? []}
+                        placeholder="tokopedia.com"
+                        sanitize={(raw) => raw.trim().toLowerCase()}
+                        onChange={(next) => updateSetting('antilink_whitelist_domain', next)}
+                      />
+                    </div>
+                    <div className="whitelist-section">
+                      <span className="whitelist-label">Nomor</span>
+                      <WhitelistChipEditor
+                        values={settings.antilink_whitelist_number ?? []}
+                        placeholder="6281234"
+                        sanitize={(raw) => raw.replace(/\D/g, '')}
+                        onChange={(next) => updateSetting('antilink_whitelist_number', next)}
                       />
                     </div>
                   </fieldset>

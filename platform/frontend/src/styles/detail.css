@@ -133,6 +133,110 @@
   }
 }
 
+/* Premium packages editor */
+.pkg-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.pkg-table th {
+  padding: var(--space-xs) var(--space-sm);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-secondary);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.pkg-table td {
+  padding: var(--space-xs) var(--space-sm);
+  vertical-align: middle;
+}
+
+.pkg-input {
+  width: 100%;
+}
+
+.pkg-input--sm {
+  max-width: 72px;
+}
+
+.pkg-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--text-caption);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pkg-add {
+  margin-top: var(--space-sm);
+}
+
+/* Antilink whitelist chip editor */
+.chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 2px var(--space-sm);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-caption);
+  font-family: var(--font-mono);
+}
+
+.chip__remove {
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  color: var(--color-text-muted);
+  transition: color var(--duration-fast) var(--ease);
+}
+
+.chip__remove:hover {
+  color: var(--color-error);
+}
+
+.chip-add-input {
+  height: 28px;
+  padding: 0 var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-raised);
+  font-size: var(--text-caption);
+  font-family: var(--font-mono);
+  width: 160px;
+}
+
+.chip-add-input:focus {
+  border-color: var(--color-primary);
+  outline: none;
+}
+
+.whitelist-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.whitelist-label {
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-secondary);
+}
+
 .detail-header {
   display: flex;
   flex-direction: column;
