@@ -20,6 +20,26 @@ export interface PluginsEnabled {
   antiLink: boolean;
 }
 
+// Satu baris tab Command: satu file plugin core (bisa berisi beberapa alias command).
+// Katalog di-generate dari core lewat `npm run catalog` (core/scripts/list-commands.mjs).
+export interface CommandEntry {
+  file: string;
+  category: string;
+  commands: string[];
+  tags: string[];
+  help: string[];
+  // Command owner/rowner tidak boleh dimatikan dari dashboard.
+  locked: boolean;
+  defaultDisabled: boolean;
+}
+
+export interface CommandCatalog {
+  generatedAt: string;
+  source: string;
+  total: number;
+  commands: CommandEntry[];
+}
+
 export interface CustomSettings {
   // Identitas bot
   botname: string;
@@ -64,6 +84,7 @@ export interface BotConfig {
   autoReply: AutoReplyRule[];
   welcomeMsg: WelcomeMsg;
   pluginsEnabled: PluginsEnabled;
+  commandsDisabled: string[];
   customSettings: CustomSettings;
   updatedAt: Date;
 }
@@ -74,6 +95,7 @@ export interface BotConfigRow {
   auto_reply: AutoReplyRule[] | null;
   welcome_msg: Partial<WelcomeMsg> | null;
   plugins_enabled: Partial<PluginsEnabled> | null;
+  commands_disabled: string[] | null;
   custom_settings: Partial<CustomSettings> | null;
   updated_at: Date;
 }
@@ -111,4 +133,5 @@ export interface BotConfigFile {
   token: { rex: string; jerexd: string };
   auto_reply: AutoReplyRule[];
   welcome_msg: WelcomeMsg;
+  commands_disabled: string[];
 }

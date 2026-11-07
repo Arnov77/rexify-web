@@ -22,6 +22,9 @@ export const DEFAULT_PLUGINS_ENABLED: PluginsEnabled = {
   antiLink: false,
 };
 
+// Belum ada plugin yang dimatikan: semua command aktif seperti kondisi core saat ini.
+export const DEFAULT_COMMANDS_DISABLED: string[] = [];
+
 export const DEFAULT_CUSTOM_SETTINGS: CustomSettings = {
   // Identitas bot
   botname: 'Rexify Bot',
@@ -121,5 +124,6 @@ export function defaultBotConfig(): BotConfigFile {
     },
     auto_reply: [],
     welcome_msg: { ...DEFAULT_WELCOME_MSG },
+    commands_disabled: [...DEFAULT_COMMANDS_DISABLED],
   };
 }

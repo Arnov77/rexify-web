@@ -7,6 +7,7 @@ import billingRoutes from './billing/routes';
 import registerRoutes from './auth/register';
 import verifyRoutes from './auth/verify';
 import { isAccessActive, sessionQuotaFor } from './config/plans';
+import { refreshCatalogIfStale } from './config/catalog-refresh';
 import configRoutes from './config/routes';
 import { ValidationError } from './config/validator';
 import { closePool } from './db';
@@ -78,6 +79,9 @@ async function main(): Promise<void> {
   await app.register(logServer);
 
   await restoreActiveSessions();
+  // Plugin core bisa berubah (deploy/update) tanpa katalog ikut di-generate; jalankan
+  // sekali saat boot dan biarkan selesai di belakang layar.
+  void refreshCatalogIfStale();
   await app.listen({ port: PORT, host: '0.0.0.0' });
 
   const shutdown = async (signal: string): Promise<void> => {

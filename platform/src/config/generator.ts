@@ -1,10 +1,11 @@
 import { existsSync } from 'node:fs';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { pool } from '../db';
 import { instanceConfigPath } from '../paths';
 import { getSessionById } from '../session/store';
 import type { BotConfigFile } from '../types/config';
+import { pushConfigRemote } from '../session/bot-runner-client';
 import { defaultConfigFor, getConfig } from './bot-config';
 import { defaultBotConfig } from './defaults';
 
@@ -86,11 +87,17 @@ export async function generateConfig(sessionId: string): Promise<BotConfigFile> 
     },
     auto_reply: config.autoReply,
     welcome_msg: config.welcomeMsg,
+    // Dibaca core/handler.js: plugin dengan path ini dilewati (termasuk plugin.before).
+    commands_disabled: config.commandsDisabled,
   };
 
   const target = instanceConfigPath(sessionId);
   await mkdir(dirname(target), { recursive: true });
-  await writeFile(target, `${JSON.stringify(file, null, 2)}\n`, 'utf8');
+  // Tulis ke file sementara lalu rename: bot memantau config.json (hot reload), jadi file
+  // tidak boleh sempat terbaca dalam keadaan setengah tertulis.
+  const tmp = `${target}.tmp`;
+  await writeFile(tmp, `${JSON.stringify(file, null, 2)}\n`, 'utf8');
+  await rename(tmp, target);
 
   return file;
 }
@@ -99,4 +106,33 @@ export async function generateConfig(sessionId: string): Promise<BotConfigFile> 
 export async function syncInstanceConfig(sessionId: string): Promise<void> {
   if (!existsSync(dirname(instanceConfigPath(sessionId)))) return;
   await generateConfig(sessionId);
+}
+
+function isRemoteRunnerMode(): boolean {
+  return process.env.BOT_RUNNER_MODE === 'other';
+}
+
+/**
+ * Terapkan config terbaru ke instance bot tanpa restart.
+ * - mode 'same': tulis config.json di mesin platform (folder instance ada di sini).
+ * - mode 'other': config.json milik bot ada di mesin Bot Runner, jadi dikirim lewat HTTP.
+ *   Runner menulisnya atomik; watcher core lalu memuat ulang `commands_disabled` + `limit`.
+ * Kegagalan push tidak boleh menggagalkan PATCH (DB sudah tersimpan; config dikirim lagi
+ * saat /spawn berikutnya).
+ */
+export async function applyConfigToBot(sessionId: string): Promise<void> {
+  if (!isRemoteRunnerMode()) {
+    await syncInstanceConfig(sessionId);
+    return;
+  }
+
+  const file = await generateConfig(sessionId);
+  try {
+    await pushConfigRemote(sessionId, JSON.stringify(file));
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[config] gagal kirim config ke Bot Runner (${sessionId}): ${err instanceof Error ? err.message : err}`,
+    );
+  }
 }

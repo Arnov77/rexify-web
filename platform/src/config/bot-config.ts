@@ -10,6 +10,7 @@ import type {
 } from '../types/config';
 import {
   DEFAULT_AUTO_REPLY,
+  DEFAULT_COMMANDS_DISABLED,
   DEFAULT_CUSTOM_SETTINGS,
   DEFAULT_PLUGINS_ENABLED,
   DEFAULT_WELCOME_MSG,
@@ -17,12 +18,14 @@ import {
 import {
   ValidationError,
   validateAutoReply,
+  validateCommandsDisabled,
   validateCustomSettings,
   validatePluginsEnabled,
   validateWelcomeMsg,
 } from './validator';
 
-const COLUMNS = 'id, session_id, auto_reply, welcome_msg, plugins_enabled, custom_settings, updated_at';
+const COLUMNS =
+  'id, session_id, auto_reply, welcome_msg, plugins_enabled, commands_disabled, custom_settings, updated_at';
 
 const cache = new Map<string, BotConfig>();
 
@@ -30,6 +33,7 @@ export interface ConfigPatch {
   autoReply?: unknown;
   welcomeMsg?: unknown;
   pluginsEnabled?: unknown;
+  commandsDisabled?: unknown;
   customSettings?: unknown;
 }
 
@@ -41,6 +45,7 @@ function mapRow(row: BotConfigRow): BotConfig {
     autoReply: row.auto_reply ?? DEFAULT_AUTO_REPLY,
     welcomeMsg: { ...DEFAULT_WELCOME_MSG, ...(row.welcome_msg ?? {}) },
     pluginsEnabled: { ...DEFAULT_PLUGINS_ENABLED, ...(row.plugins_enabled ?? {}) },
+    commandsDisabled: [...(row.commands_disabled ?? DEFAULT_COMMANDS_DISABLED)],
     customSettings: {
       ...settings,
       antilink_whitelist_domain: settings.antilink_whitelist_domain ?? [],
@@ -77,6 +82,7 @@ export function defaultConfigFor(sessionId: string): BotConfig {
     autoReply: [],
     welcomeMsg: { ...DEFAULT_WELCOME_MSG },
     pluginsEnabled: { ...DEFAULT_PLUGINS_ENABLED },
+    commandsDisabled: [...DEFAULT_COMMANDS_DISABLED],
     customSettings: { ...DEFAULT_CUSTOM_SETTINGS },
     updatedAt: new Date(),
   };
@@ -92,8 +98,8 @@ export async function createDefaultConfig(
     : { ...DEFAULT_CUSTOM_SETTINGS };
 
   const { rows } = await pool.query<BotConfigRow>(
-    `INSERT INTO bot_configs (session_id, auto_reply, welcome_msg, plugins_enabled, custom_settings)
-     VALUES ($1::uuid, $2::jsonb, $3::jsonb, $4::jsonb, $5::jsonb)
+    `INSERT INTO bot_configs (session_id, auto_reply, welcome_msg, plugins_enabled, commands_disabled, custom_settings)
+     VALUES ($1::uuid, $2::jsonb, $3::jsonb, $4::jsonb, $5::jsonb, $6::jsonb)
      ON CONFLICT (session_id) DO NOTHING
      RETURNING ${COLUMNS}`,
     [
@@ -101,6 +107,7 @@ export async function createDefaultConfig(
       JSON.stringify(DEFAULT_AUTO_REPLY),
       JSON.stringify(DEFAULT_WELCOME_MSG),
       JSON.stringify(DEFAULT_PLUGINS_ENABLED),
+      JSON.stringify(DEFAULT_COMMANDS_DISABLED),
       JSON.stringify(customSettings),
     ],
   );
@@ -135,6 +142,11 @@ export async function updateConfig(sessionId: string, patch: ConfigPatch): Promi
       ? current.pluginsEnabled
       : { ...current.pluginsEnabled, ...validatePluginsEnabled(patch.pluginsEnabled) };
 
+  const commandsDisabled: string[] =
+    patch.commandsDisabled === undefined
+      ? current.commandsDisabled
+      : validateCommandsDisabled(patch.commandsDisabled);
+
   const customSettings: CustomSettings =
     patch.customSettings === undefined
       ? current.customSettings
@@ -145,7 +157,8 @@ export async function updateConfig(sessionId: string, patch: ConfigPatch): Promi
      SET auto_reply = $2::jsonb,
          welcome_msg = $3::jsonb,
          plugins_enabled = $4::jsonb,
-         custom_settings = $5::jsonb,
+         commands_disabled = $5::jsonb,
+         custom_settings = $6::jsonb,
          updated_at = now()
      WHERE session_id = $1::uuid
      RETURNING ${COLUMNS}`,
@@ -154,6 +167,7 @@ export async function updateConfig(sessionId: string, patch: ConfigPatch): Promi
       JSON.stringify(autoReply),
       JSON.stringify(welcomeMsg),
       JSON.stringify(pluginsEnabled),
+      JSON.stringify(commandsDisabled),
       JSON.stringify(customSettings),
     ],
   );

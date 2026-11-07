@@ -15,6 +15,8 @@ Khusus WebSocket, secret dikirim lewat query `?secret=...`.
 | DELETE | `/destroy/:sessionId` | Hapus proses + isi instance (folder `sessions/` dipertahankan) |
 | GET | `/status/:sessionId` | `{ "status": "online" \| null }` |
 | GET | `/stream/:sessionId?secret=...` | WebSocket: kirim `{ type: 'qr' \| 'pairing' \| 'connected' }` |
+| POST | `/config/:sessionId` | Timpa `config.json` instance (atomik). Body: `{ "configJson": "..." }`. Dipakai platform agar toggle command/limit langsung berlaku (hot reload) |
+| POST | `/catalog` | Generate ulang katalog command dari `core/plugins` dan kembalikan JSON-nya (manual/ops) |
 
 ## Install
 
@@ -45,6 +47,21 @@ Jalankan dengan env ter-load (Node 20+):
 ```bash
 node --env-file=.env src/index.js
 ```
+
+## Katalog command (manual)
+
+Platform mode `other` tidak menyentuh `core/`, jadi katalog command dibuat manual di mesin runner
+saat plugin berubah:
+
+```bash
+curl -X POST http://127.0.0.1:4000/catalog \
+  -H "Authorization: Bearer $BOT_RUNNER_SECRET" \
+  -H "Content-Type: application/json" -d '{}' \
+  > command-catalog.json
+```
+
+Lalu salin `command-catalog.json` ke `platform/src/config/commands.catalog.json` saat deploy.
+Alternatif tanpa HTTP: `cd /home/rexify/core && node scripts/list-commands.mjs --out <file>`.
 
 ## Run
 

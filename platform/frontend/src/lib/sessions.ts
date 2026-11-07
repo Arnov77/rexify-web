@@ -1,5 +1,13 @@
 import { apiRequest } from './api';
-import type { AutoReplyRule, BotConfig, ConnectMode, PluginLog, Session } from './types';
+import type {
+  AutoReplyRule,
+  BotConfig,
+  CommandCatalog,
+  ConfigAuditEntry,
+  ConnectMode,
+  PluginLog,
+  Session,
+} from './types';
 
 interface SessionDetail {
   session: Session;
@@ -92,6 +100,39 @@ export function getPluginLogs(
   );
 }
 
-export function countEnabledPlugins(config: BotConfig): number {
-  return Object.values(config.pluginsEnabled).filter(Boolean).length;
+// Katalog command sama untuk semua session (dibaca dari core/plugins di server).
+export function getCommandCatalog(): Promise<CommandCatalog> {
+  return apiRequest<CommandCatalog>('/commands');
+}
+
+// Generate ulang katalog dari source plugin core (hanya bisa kalau core ada di mesin platform).
+export function refreshCommandCatalog(): Promise<CommandCatalog> {
+  return apiRequest<CommandCatalog>('/commands/refresh', { method: 'POST' });
+}
+
+// Terapkan preset command (setelan massal per kategori); server yang menghitung daftar file.
+export function applyCommandPreset(
+  sessionId: string,
+  presetId: string,
+): Promise<{ config: BotConfig; preset: { id: string; label: string }; disabledTotal: number }> {
+  return apiRequest<{
+    config: BotConfig;
+    preset: { id: string; label: string };
+    disabledTotal: number;
+  }>(`/sessions/${sessionId}/config/presets/${presetId}`, { method: 'POST' });
+}
+
+// Riwayat perubahan command/limit untuk tab Command.
+export function getConfigAudit(sessionId: string, limit = 20, offset = 0): Promise<ConfigAuditEntry[]> {
+  return apiRequest<{ logs: ConfigAuditEntry[] }>(
+    `/sessions/${sessionId}/audit?limit=${limit}&offset=${offset}`,
+  ).then((data) => data.logs);
+}
+
+// Jumlah command aktif = total katalog - yang dimatikan user. Entry tanpa command
+// (plugin event murni) tidak dihitung supaya angkanya tidak membingungkan.
+export function countEnabledCommands(catalog: CommandCatalog, config: BotConfig): number {
+  const runnable = catalog.commands.filter((entry) => entry.commands.length > 0);
+  const disabled = new Set(config.commandsDisabled);
+  return runnable.filter((entry) => !disabled.has(entry.file)).length;
 }

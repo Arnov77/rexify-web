@@ -39,3 +39,39 @@ export function sessionQuotaFor(plan: string): number {
   const limits = PLAN_LIMITS[plan as PlanName];
   return limits ? limits.sessions : 0;
 }
+
+export interface CommandAccess {
+  // Kategori plugin yang boleh dipakai; `null` = semua kategori.
+  keepCategories: string[] | null;
+}
+
+// Gating command per plan: free hanya dapat fitur inti, pro menambah AI/hiburan,
+// enterprise membuka semua plugin berat. `owner` tetap terkunci untuk semua plan
+// lewat flag `locked` katalog.
+export const PLAN_COMMANDS: Record<PlanName, CommandAccess> = {
+  free: {
+    keepCategories: ['group', 'info', 'tools', 'search', 'sticker', 'downloader', 'premium'],
+  },
+  pro: {
+    keepCategories: [
+      'group',
+      'info',
+      'tools',
+      'search',
+      'sticker',
+      'downloader',
+      'premium',
+      'ai',
+      'fun',
+      'generator',
+      'mini-app',
+      'manga',
+    ],
+  },
+  enterprise: { keepCategories: null },
+};
+
+// Plan tak dikenal diperlakukan seperti free (fail closed: jangan buka fitur karena typo).
+export function commandAccessFor(plan: string): CommandAccess {
+  return PLAN_COMMANDS[plan as PlanName] ?? PLAN_COMMANDS.free;
+}

@@ -409,6 +409,173 @@
   color: var(--color-text-secondary);
 }
 
+/* Tab Command — toolbar, filter kategori, pagination */
+.command-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-base);
+}
+
+.command-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+  justify-content: space-between;
+}
+
+.command-toolbar__search {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.command-toolbar__search .input {
+  width: 100%;
+  min-width: 0;
+}
+
+.command-toolbar__count {
+  white-space: nowrap;
+}
+
+.command-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.command-plan-note a {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+.command-presets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.command-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.command-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-secondary);
+  transition: color var(--duration-fast) var(--ease),
+    border-color var(--duration-fast) var(--ease),
+    background var(--duration-fast) var(--ease);
+}
+
+.command-chip:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-primary-muted);
+}
+
+.command-chip--active {
+  border-color: var(--color-primary);
+  background: var(--color-primary-muted);
+  color: var(--color-text-primary);
+}
+
+.command-chip__count {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+.command-bulk {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.command-tag {
+  display: inline-block;
+  padding: 1px 6px;
+  margin-right: 4px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+.command-tag--locked {
+  background: transparent;
+  border: 1px dashed var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.command-empty {
+  padding: var(--space-lg);
+}
+
+.command-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+}
+
+/* Riwayat perubahan command/limit */
+.audit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.audit__title {
+  font-size: var(--text-body);
+  font-weight: var(--weight-medium);
+}
+
+.audit-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.audit-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.audit-row__time {
+  min-width: 128px;
+}
+
+.audit-row__text {
+  flex: 1;
+  font-size: var(--text-caption);
+}
+
+.audit-row__user {
+  color: var(--color-text-secondary);
+}
+
 /* Auto reply */
 .auto-reply {
   display: flex;

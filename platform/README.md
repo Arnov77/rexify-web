@@ -85,8 +85,9 @@ Dicatat karena SPEC tidak eksplisit:
 7. Endpoint session dan config ditaruh di `src/session/routes.ts` dan `src/config/routes.ts`
    (spec tidak punya folder `routes/`).
 8. `src/paths.ts` jadi satu-satunya sumber path instance.
-9. `config.json` memuat `auto_reply` dan `welcome_msg` (dibaca bot), tanpa `plugins_enabled`
-   karena plugin diatur di level platform.
+9. `config.json` memuat `auto_reply`, `welcome_msg`, dan `commands_disabled` (semuanya dibaca bot).
+   `plugins_enabled` tetap disimpan di DB untuk kompatibilitas, tapi tidak ditulis ke `config.json`
+   dan tidak lagi dipakai UI.
 10. `owner` di `config.json` diisi `phone_number` session; platform tidak menyimpan nomor user.
 11. `validateWelcomeMsg` dan `validatePluginsEnabled` ditambah agar PATCH config bisa memvalidasi
     semua bagian config.
@@ -104,6 +105,49 @@ Dicatat karena SPEC tidak eksplisit:
 21. Error 5xx selalu `INTERNAL_ERROR` dengan pesan generik; detail hanya masuk log. Route tak
     dikenal memakai `NOT_FOUND`.
 22. Cache config di-invalidasi saat session dihapus, supaya Map tidak menyimpan entry yatim.
+23. Tab Command memakai katalog statis `src/config/commands.catalog.json`, di-generate dari
+    source plugin core: `cd core && npm run catalog`. Isinya `{ file, category, commands, tags,
+    help, locked }` per file plugin yang punya `.command` (saat ini 184 dari 197 file; plugin
+    event murni dikecualikan karena tidak bisa dipanggil user). Tidak ada import plugin saat
+    generate — source dibaca sebagai teks supaya tidak menjalankan kode top-level.
+24. Toggle command menyimpan path file plugin (`plugins/<kategori>/<file>.js`) di
+    `bot_configs.commands_disabled`, ditulis generator ke `config.json`, lalu
+    `core/handler.js` melewati plugin tersebut (termasuk `plugin.before` seperti antilink/AI).
+25. Command milik owner (`plugin.owner`/`plugin.rowner`) ditandai `locked` di katalog dan
+    disaring di server, jadi client tidak bisa mematikan command pemulihan bot.
+26. Hot reload: `core/lib/global.js` memantau `config.json` (1 dtk) dan memperbarui
+    `global.commands_disabled` + `global.limit` tanpa restart. Bot yang dijalankan sebelum
+    patch ini tetap perlu satu kali restart untuk memuat watcher-nya.
+27. `POST /api/commands/refresh` hanya untuk mode `same` (core ada di mesin platform): jalankan
+    `core/scripts/list-commands.mjs` lalu buang cache katalog. Mode `other` sengaja read-only
+    untuk user — katalog dibuat manual oleh ops di mesin Bot Runner (`node
+    scripts/list-commands.mjs` atau `POST /catalog`), lalu file `commands.catalog.json` ikut
+    deploy platform. UI hanya menampilkan tanggal katalog.
+28. `applyConfigToBot()` dipakai semua endpoint config: mode `same` menulis `config.json` lokal,
+    mode `other` mengirim config ke `POST /config/:sessionId` di Bot Runner (tulis atomik).
+    Dengan begitu hot reload `commands_disabled`/`limit` jalan di kedua mode; push gagal hanya
+    di-warn karena config tetap dikirim saat `/spawn` berikutnya.
+29. Saat boot, `refreshCatalogIfStale()` membandingkan `generatedAt` katalog dengan mtime plugin
+    terbaru dan regenerate kalau ketinggalan (dilewati di mode `other` karena folder plugin
+    tidak ada di mesin platform). `GET /api/commands` menyertakan `canRefresh` untuk
+    menampilkan/menyembunyikan tombol "Muat ulang katalog".
+30. Preset command (`src/config/presets.ts`: `all`, `minimal`, `hemat`) mengisi
+    `commands_disabled` sekaligus berdasarkan kategori katalog lewat
+    `POST /api/sessions/:sessionId/config/presets/:presetId`. Plugin owner/rowner tidak pernah
+    ikut dimatikan, dan toggle per file plugin tetap bisa diubah sesudah preset diterapkan.
+    `GET /api/commands` mengirim daftar `presets` supaya tombolnya bisa dirender frontend.
+31. Audit log ada di tabel `config_audit_log` (migrasi 008): `commands_updated`, `preset_applied`,
+    dan `limit_updated` dicatat dari PATCH config/preset (detail dibatasi 20 path contoh).
+    Riwayat dibaca lewat `GET /api/sessions/:sessionId/audit?limit=&offset=` (join email user)
+    dan tampil di bagian "Riwayat perubahan" tab Command. Gagal insert audit hanya di-warn,
+    penyimpanan config tidak ikut gagal.
+32. Gating plan untuk command: `PLAN_COMMANDS` di `config/plans.ts` menentukan kategori yang
+    boleh dipakai (free: grup/info/tools/search/sticker/downloader/premium = 87 plugin, pro:
+    +ai/fun/generator/mini-app/manga = 122 plugin, enterprise: semua 184 plugin; plan tak
+    dikenal diperlakukan sebagai free). `GET /api/commands` menandai tiap entry dengan
+    `available`, dan `PATCH config` + preset menyaring `commands_disabled` lewat
+    `allowedFileSetForPlan()` supaya tidak bisa di-bypass dari request manual. Frontend
+    menampilkan badge "perlu upgrade" + link `/billing` untuk entry terkunci.
 
 ## Catatan kompatibilitas rex-bot-v2
 

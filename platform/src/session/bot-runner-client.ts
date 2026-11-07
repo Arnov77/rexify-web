@@ -34,6 +34,12 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
   return (await res.json()) as T;
 }
 
+// Kirim config.json terbaru ke instance yang sudah jalan (hot reload command/limit).
+// 404 = instance belum di-spawn di runner; config tetap dikirim saat /spawn berikutnya.
+export async function pushConfigRemote(sessionId: string, configJson: string): Promise<void> {
+  await call('POST', `/config/${sessionId}`, { configJson });
+}
+
 export async function spawnSessionRemote(
   userId: string,
   sessionId: string,

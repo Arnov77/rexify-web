@@ -235,3 +235,32 @@ export function validatePluginsEnabled(input: unknown): Partial<PluginsEnabled> 
 
   return result;
 }
+
+// Satu entri = path relatif file plugin di core, bukan nama command: satu file bisa punya
+// beberapa alias dan plugin.before (antilink/auto-AI) hanya bisa dimatikan per file.
+const PLUGIN_PATH_PATTERN = /^plugins\/[a-z0-9_-]+\/[^/\\]+\.(js|mjs|cjs)$/i;
+const MAX_DISABLED_COMMANDS = 500;
+
+export function validateCommandsDisabled(input: unknown): string[] {
+  if (!Array.isArray(input)) {
+    throw new ValidationError('commands_disabled harus berupa array');
+  }
+  if (input.length > MAX_DISABLED_COMMANDS) {
+    throw new ValidationError(`commands_disabled maksimal ${MAX_DISABLED_COMMANDS} entri`);
+  }
+
+  const paths = input.map((item, index) => {
+    if (typeof item !== 'string') {
+      throw new ValidationError(`commands_disabled[${index}] harus berupa teks`);
+    }
+    const normalized = item.trim().replace(/\\/g, '/');
+    if (!PLUGIN_PATH_PATTERN.test(normalized)) {
+      throw new ValidationError(
+        `commands_disabled[${index}] harus path plugin, contoh plugins/downloader/tiktok.js`,
+      );
+    }
+    return normalized;
+  });
+
+  return [...new Set(paths)];
+}

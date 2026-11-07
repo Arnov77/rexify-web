@@ -11,7 +11,8 @@ import { Link, useParams } from 'react-router-dom';
 import { IconRefresh, IconTrash } from '../components/icons';
 import AppLayout from '../components/layout/AppLayout';
 import AutoReplyEditor from '../components/session/AutoReplyEditor';
-import PluginToggle from '../components/session/PluginToggle';
+import CommandAudit from '../components/session/CommandAudit';
+import CommandList from '../components/session/CommandList';
 import QRModal from '../components/session/QRModal';
 import StatusBadge from '../components/session/StatusBadge';
 import Button from '../components/ui/Button';
@@ -20,50 +21,29 @@ import { useToast } from '../components/ui/Toast';
 import { ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import {
+  applyCommandPreset,
   connectSession,
   disconnectSession,
+  getCommandCatalog,
+  getConfigAudit,
   getConfig,
   getSession,
+  refreshCommandCatalog,
   restartSession,
   updateConfig,
 } from '../lib/sessions';
 import type {
   BotConfig,
+  CommandCatalog,
+  CommandEntry,
+  CommandPreset,
+  ConfigAuditEntry,
   CustomSettings,
-  PluginsEnabled,
   PremiumPackage,
   Session,
   SessionTab,
 } from '../lib/types';
 import '../styles/detail.css';
-
-const PLUGIN_META: { key: keyof PluginsEnabled; label: string; description: string }[] = [
-  {
-    key: 'autoReply',
-    label: 'Auto reply',
-    description: 'Balas pesan otomatis sesuai rule yang kamu buat.',
-  },
-  {
-    key: 'welcomeMsg',
-    label: 'Pesan sambutan',
-    description: 'Kirim pesan sambutan ke chat yang baru masuk.',
-  },
-  {
-    key: 'aiChat',
-    label: 'AI chat',
-    description: 'Jawab pesan dengan model AI.',
-  },
-  {
-    key: 'downloader',
-    label: 'Downloader',
-    description: 'Unduh media dari link yang dikirim ke bot.',
-  },
-  {
-    key: 'antiLink',
-    label: 'Anti link',
-    description: 'Hapus pesan berisi link di luar whitelist.',
-  },
-];
 
 type SecretKey = 'token_rex' | 'git_token';
 
@@ -270,7 +250,7 @@ function WhitelistChipEditor({
             aria-label={`Hapus ${value}`}
             onClick={() => onChange(values.filter((item) => item !== value))}
           >
-            ✕
+            âœ•
           </button>
         </span>
       ))}
@@ -304,7 +284,7 @@ function WhitelistChipEditor({
 
 const TABS: { key: SessionTab; label: string }[] = [
   { key: 'autoReply', label: 'Auto Reply' },
-  { key: 'plugin', label: 'Plugin' },
+  { key: 'plugin', label: 'Command' },
   { key: 'settings', label: 'Pengaturan' },
 ];
 
@@ -328,7 +308,12 @@ export default function SessionDetail() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
-  const [savingPlugin, setSavingPlugin] = useState<keyof PluginsEnabled | null>(null);
+  const [commandCatalog, setCommandCatalog] = useState<CommandCatalog | null>(null);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [refreshingCatalog, setRefreshingCatalog] = useState(false);
+  const [savingCommand, setSavingCommand] = useState<string | null>(null);
+  const [applyingPreset, setApplyingPreset] = useState<string | null>(null);
+  const [auditLogs, setAuditLogs] = useState<ConfigAuditEntry[]>([]);
   const [tab, setTab] = useState<SessionTab>('autoReply');
   const [settings, setSettings] = useState<CustomSettings | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
@@ -341,21 +326,40 @@ export default function SessionDetail() {
   const load = useCallback(async () => {
     setLoadError(null);
     try {
-      const [detail, botConfig] = await Promise.all([getSession(sessionId), getConfig(sessionId)]);
+      const [detail, botConfig, catalog, audit] = await Promise.all([
+        getSession(sessionId),
+        getConfig(sessionId),
+        // Katalog gagal dimuat tidak boleh memblokir tab lain: tangkap sendiri.
+        getCommandCatalog().catch(() => null),
+        // Riwayat perubahan juga opsional; tab Command tetap jalan tanpa itu.
+        getConfigAudit(sessionId).catch(() => []),
+      ]);
       setSession(detail.session);
       setPm2(detail.pm2);
       setConfig(botConfig);
       setSettings(botConfig.customSettings);
+      setCommandCatalog(catalog);
+      setAuditLogs(audit);
     } catch (err) {
       setLoadError(err instanceof ApiError ? err.message : 'Gagal memuat session');
     } finally {
       setLoading(false);
+      setCatalogLoading(false);
     }
   }, [sessionId]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Riwayat perubahan disegarkan setelah aksi yang mengubah command/limit.
+  const refreshAudit = useCallback(async () => {
+    try {
+      setAuditLogs(await getConfigAudit(sessionId));
+    } catch {
+      // Diamkan: riwayat bukan data kritis, percobaan berikutnya menyusul.
+    }
+  }, [sessionId]);
 
   // Status bot bisa berubah tanpa aksi user (reconnect otomatis, proses mati), jadi status
   // disegarkan berkala tanpa mengambil ulang config.
@@ -422,23 +426,79 @@ export default function SessionDetail() {
     }
   }
 
-  async function handlePluginToggle(key: keyof PluginsEnabled, value: boolean) {
+  // Toggle command = daftar path plugin yang dimatikan. Server langsung mendorong config.json
+  // baru ke bot (watcher core), jadi tidak perlu restart.
+  async function saveCommandsDisabled(next: string[], savingKey: string | null) {
     if (!config) return;
 
     const previous = config;
-    const nextPlugins = { ...config.pluginsEnabled, [key]: value };
-    setConfig({ ...config, pluginsEnabled: nextPlugins });
-    setSavingPlugin(key);
+    setConfig({ ...config, commandsDisabled: next });
+    setSavingCommand(savingKey);
 
     try {
-      const updated = await updateConfig(sessionId, { pluginsEnabled: nextPlugins });
+      const updated = await updateConfig(sessionId, { commandsDisabled: next });
       setConfig(updated);
-      showToast('Config disimpan', 'success');
+      showToast('Command disimpan. Berlaku otomatis (hot reload).', 'success');
+      void refreshAudit();
     } catch (err) {
       setConfig(previous);
-      showToast(err instanceof ApiError ? err.message : 'Gagal menyimpan config', 'error');
+      showToast(err instanceof ApiError ? err.message : 'Gagal menyimpan command', 'error');
     } finally {
-      setSavingPlugin(null);
+      setSavingCommand(null);
+    }
+  }
+
+  function handleCommandToggle(entry: CommandEntry, enabled: boolean) {
+    if (!config || entry.locked) return;
+
+    const next = enabled
+      ? config.commandsDisabled.filter((file) => file !== entry.file)
+      : [...new Set([...config.commandsDisabled, entry.file])];
+    void saveCommandsDisabled(next, entry.file);
+  }
+
+  function handleCommandBulk(entries: CommandEntry[], enabled: boolean) {
+    if (!config) return;
+
+    const targets = new Set(entries.filter((entry) => !entry.locked).map((entry) => entry.file));
+    const next = enabled
+      ? config.commandsDisabled.filter((file) => !targets.has(file))
+      : [...new Set([...config.commandsDisabled, ...targets])];
+    void saveCommandsDisabled(next, null);
+  }
+
+  // Preset = setelan massal per kategori. Server yang menghitung daftar file plugin,
+  // lalu config baru langsung didorong ke bot (hot reload).
+  async function handleApplyPreset(preset: CommandPreset) {
+    if (!config || applyingPreset !== null) return;
+
+    setApplyingPreset(preset.id);
+    try {
+      const result = await applyCommandPreset(sessionId, preset.id);
+      setConfig(result.config);
+      void refreshAudit();
+      showToast(
+        `Preset "${result.preset.label}" diterapkan: ${result.disabledTotal} plugin dimatikan.`,
+        'success',
+      );
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : 'Gagal menerapkan preset', 'error');
+    } finally {
+      setApplyingPreset(null);
+    }
+  }
+
+  // Generate ulang katalog setelah plugin core berubah; tidak menyentuh config bot.
+  async function handleRefreshCatalog() {
+    setRefreshingCatalog(true);
+    try {
+      const catalog = await refreshCommandCatalog();
+      setCommandCatalog(catalog);
+      showToast(`Katalog diperbarui: ${catalog.total} plugin`, 'success');
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : 'Gagal membuat ulang katalog', 'error');
+    } finally {
+      setRefreshingCatalog(false);
     }
   }
 
@@ -505,7 +565,7 @@ export default function SessionDetail() {
 
       {loading ? (
         <p className="caption" role="status">
-          Memuat session…
+          Memuat sessionâ€¦
         </p>
       ) : session && config ? (
         <>
@@ -530,7 +590,7 @@ export default function SessionDetail() {
                 <dd>
                   {session.connected_at
                     ? dateFormat.format(new Date(session.connected_at))
-                    : '—'}
+                    : 'â€”'}
                 </dd>
               </div>
               <div>
@@ -607,21 +667,26 @@ export default function SessionDetail() {
                 aria-labelledby="tab-plugin"
               >
                 <div className="section__head">
-                  <h2 className="section__title">Plugin</h2>
-                  <p className="caption">Aktifkan hanya plugin yang kamu pakai</p>
+                  <h2 className="section__title">Command</h2>
+                  <p className="caption">
+                    Matikan command yang tidak dipakai. Perubahan langsung dipakai bot (hot
+                    reload).
+                  </p>
                 </div>
-                <div className="card plugin-list">
-                  {PLUGIN_META.map((plugin) => (
-                    <PluginToggle
-                      key={plugin.key}
-                      label={plugin.label}
-                      description={plugin.description}
-                      checked={config.pluginsEnabled[plugin.key]}
-                      disabled={savingPlugin === plugin.key}
-                      onChange={(value) => void handlePluginToggle(plugin.key, value)}
-                    />
-                  ))}
-                </div>
+                <CommandList
+                  catalog={commandCatalog}
+                  loading={catalogLoading}
+                  disabled={config.commandsDisabled}
+                  plan={user?.plan ?? null}
+                  savingFile={savingCommand}
+                  presetBusy={applyingPreset}
+                  refreshing={refreshingCatalog}
+                  onToggle={handleCommandToggle}
+                  onBulkToggle={handleCommandBulk}
+                  onApplyPreset={handleApplyPreset}
+                  onRefresh={() => void handleRefreshCatalog()}
+                />
+                <CommandAudit logs={auditLogs} />
               </section>
             </div>
           )}
@@ -642,7 +707,7 @@ export default function SessionDetail() {
                 <form className="card settings-form" onSubmit={handleSaveSettings} noValidate>
                   <p className="notice notice--info notice--with-icon">
                     <span className="notice__icon" aria-hidden="true">
-                      ℹ
+                      â„¹
                     </span>
                     <span>Perubahan berlaku setelah bot di-restart.</span>
                   </p>
@@ -652,7 +717,7 @@ export default function SessionDetail() {
                     {user?.plan === 'free' && (
                       <p className="notice notice--warning notice--with-icon">
                         <span className="notice__icon" aria-hidden="true">
-                          🔒
+                          ðŸ”’
                         </span>
                         <span>Identitas bot hanya bisa diubah di plan Pro ke atas.</span>
                       </p>
@@ -675,7 +740,7 @@ export default function SessionDetail() {
                       />
                       <Input
                         label="URL thumbnail"
-                        placeholder="https://…/thumbnail.jpg"
+                        placeholder="https://â€¦/thumbnail.jpg"
                         value={settings.thumbnailUrl}
                         onChange={(event) => updateSetting('thumbnailUrl', event.target.value)}
                         inputMode="url"
@@ -683,7 +748,7 @@ export default function SessionDetail() {
                       />
                       <Input
                         label="URL audio"
-                        placeholder="https://…/audio.mp3"
+                        placeholder="https://â€¦/audio.mp3"
                         value={settings.audioUrl}
                         onChange={(event) => updateSetting('audioUrl', event.target.value)}
                         inputMode="url"
@@ -705,13 +770,13 @@ export default function SessionDetail() {
                     <div className="settings-grid">
                       <Input
                         label="Link grup"
-                        placeholder="https://chat.whatsapp.com/…"
+                        placeholder="https://chat.whatsapp.com/â€¦"
                         value={settings.link_group}
                         onChange={(event) => updateSetting('link_group', event.target.value)}
                       />
                       <Input
                         label="Link saluran"
-                        placeholder="https://whatsapp.com/channel/…"
+                        placeholder="https://whatsapp.com/channel/â€¦"
                         value={settings.link_saluran}
                         onChange={(event) => updateSetting('link_saluran', event.target.value)}
                       />

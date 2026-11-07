@@ -13,9 +13,10 @@ import { ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import {
   connectSession,
-  countEnabledPlugins,
+  countEnabledCommands,
   deleteSession,
   disconnectSession,
+  getCommandCatalog,
   getConfig,
   listSessions,
   restartSession,
@@ -51,7 +52,7 @@ export default function Dashboard() {
   const { showToast } = useToast();
 
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [pluginCounts, setPluginCounts] = useState<Record<string, number | null>>({});
+  const [commandCounts, setCommandCounts] = useState<Record<string, number | null>>({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -69,17 +70,19 @@ export default function Dashboard() {
       const list = await listSessions();
       setSessions(list);
 
+      // Katalog sama untuk semua bot; kalau gagal dimuat, jumlah command tampil "—".
+      const catalog = await getCommandCatalog().catch(() => null);
       const counts = await Promise.all(
         list.map(async (session) => {
           try {
             const config = await getConfig(session.id);
-            return [session.id, countEnabledPlugins(config)] as const;
+            return [session.id, catalog ? countEnabledCommands(catalog, config) : null] as const;
           } catch {
             return [session.id, null] as const;
           }
         }),
       );
-      setPluginCounts(Object.fromEntries(counts));
+      setCommandCounts(Object.fromEntries(counts));
     } catch (err) {
       setLoadError(err instanceof ApiError ? err.message : 'Gagal memuat bot');
     } finally {
@@ -258,7 +261,7 @@ export default function Dashboard() {
             <div className="session-grid__item" key={session.id}>
               <SessionCard
                 session={session}
-                pluginCount={pluginCounts[session.id] ?? null}
+                commandCount={commandCounts[session.id] ?? null}
                 busy={busyId === session.id}
                 restarting={restartingId === session.id}
                 logOpen={logSessionId === session.id}

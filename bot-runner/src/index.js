@@ -1,6 +1,8 @@
 import { existsSync } from 'node:fs'
-import { copyFile, cp, mkdir, readdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
+import { execFile } from 'node:child_process'
+import { copyFile, cp, mkdir, readdir, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import { promisify } from 'node:util'
 import Fastify from 'fastify'
 import websocket from '@fastify/websocket'
 import { authMiddleware } from './auth.js'
@@ -47,6 +49,8 @@ function sessionIdOf(request) {
     return String(request.params?.sessionId ?? '').trim()
 }
 
+const execFileAsync = promisify(execFile)
+
 function internalError(request, reply, error) {
     request.log.error(error)
     return reply.code(500).send({
@@ -54,6 +58,65 @@ function internalError(request, reply, error) {
         message: 'Terjadi kesalahan di bot runner',
     })
 }
+
+// Katalog command dibuat di mesin ini karena hanya runner yang punya core/plugins.
+// Platform memanggil endpoint ini (mode 'other') lalu menyimpan hasilnya sendiri.
+app.post('/catalog', requireAuth, async (request, reply) => {
+    const script = path.join(CORE_DIR, 'scripts', 'list-commands.mjs')
+    if (!coreExists() || !existsSync(script)) {
+        return reply.code(503).send({
+            error: 'CATALOG_REFRESH_UNAVAILABLE',
+            message: 'core/scripts/list-commands.mjs tidak ada di mesin Bot Runner',
+        })
+    }
+
+    const tmp = path.join(ROOT, 'command-catalog.tmp.json')
+    try {
+        await execFileAsync(process.execPath, [script, '--out', tmp], {
+            cwd: CORE_DIR,
+            timeout: 60_000,
+            windowsHide: true,
+        })
+        const raw = await readFile(tmp, 'utf8')
+        await rm(tmp, { force: true })
+        return JSON.parse(raw)
+    } catch (error) {
+        await rm(tmp, { force: true }).catch(() => {})
+        return internalError(request, reply, error)
+    }
+})
+
+// Update config.json instance tanpa restart: platform memanggil ini setelah PATCH config,
+// lalu watcher di core/lib/global.js membaca ulang `commands_disabled`/`limit` bot.
+app.post('/config/:sessionId', requireAuth, async (request, reply) => {
+    const sessionId = sessionIdOf(request)
+    if (!sessionId) {
+        return reply.code(400).send({ error: 'INVALID_SESSION_ID' })
+    }
+
+    const body = request.body ?? {}
+    if (typeof body.configJson !== 'string' || !body.configJson) {
+        return reply.code(400).send({ error: 'INVALID_BODY', message: 'configJson wajib diisi' })
+    }
+
+    const dir = instanceDir(sessionId)
+    if (!existsSync(dir)) {
+        // Instance belum pernah di-spawn di runner ini; config akan dikirim saat /spawn.
+        return reply.code(404).send({ error: 'SESSION_NOT_FOUND' })
+    }
+
+    const target = path.join(dir, 'config.json')
+    const tmp = `${target}.tmp`
+    try {
+        // Tulis atomik: bot memantau file ini, jangan sampai terbaca setengah jadi.
+        await writeFile(tmp, body.configJson, 'utf8')
+        await rename(tmp, target)
+        return { ok: true }
+    } catch (error) {
+        await rm(tmp, { force: true }).catch(() => {})
+        return internalError(request, reply, error)
+    }
+})
 
 // Symlink ke core/ (fallback copy di Windows tanpa hak symlink), sama seperti platform.
 async function linkCoreEntries(dir) {

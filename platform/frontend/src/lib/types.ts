@@ -62,6 +62,52 @@ export interface PluginsEnabled {
   antiLink: boolean;
 }
 
+// Satu baris tab Command — satu file plugin core (bisa berisi beberapa alias command).
+export interface CommandEntry {
+  file: string;
+  category: string;
+  commands: string[];
+  tags: string[];
+  help: string[];
+  locked: boolean;
+  defaultDisabled: boolean;
+  // false = kategori ini di luar plan user (butuh upgrade); server juga menolak togglenya.
+  available: boolean;
+}
+
+export interface CommandCategory {
+  id: string;
+  label: string;
+  total: number;
+}
+
+// Preset = setelan massal command berdasarkan kategori (toggle tetap per file plugin).
+export interface CommandPreset {
+  id: string;
+  label: string;
+  description: string;
+}
+
+export interface CommandCatalog {
+  generatedAt: string;
+  total: number;
+  canRefresh: boolean;
+  categories: CommandCategory[];
+  presets: CommandPreset[];
+  commands: CommandEntry[];
+}
+
+// Riwayat perubahan setelan bot (siapa mengubah command/limit, kapan).
+export type ConfigAuditAction = 'commands_updated' | 'preset_applied' | 'limit_updated';
+
+export interface ConfigAuditEntry {
+  id: string;
+  action: ConfigAuditAction;
+  detail: Record<string, unknown>;
+  createdAt: string;
+  userEmail: string | null;
+}
+
 export interface PremiumPackage {
   id: string;
   label: string;
@@ -114,6 +160,7 @@ export interface BotConfig {
   autoReply: AutoReplyRule[];
   welcomeMsg: WelcomeMsg;
   pluginsEnabled: PluginsEnabled;
+  commandsDisabled: string[];
   customSettings: CustomSettings;
   updatedAt: string;
 }

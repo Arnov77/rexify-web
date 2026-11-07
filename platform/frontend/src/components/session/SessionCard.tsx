@@ -6,7 +6,7 @@ import type { Session } from '../../lib/types';
 
 interface SessionCardProps {
   session: Session;
-  pluginCount: number | null;
+  commandCount: number | null;
   busy: boolean;
   // Restart hanya masuk akal untuk bot aktif; loading ditahan di tombolnya sendiri.
   restarting?: boolean;
@@ -34,7 +34,7 @@ function initials(session: Session): string {
 
 export default function SessionCard({
   session,
-  pluginCount,
+  commandCount,
   busy,
   restarting = false,
   logOpen = false,
@@ -118,7 +118,7 @@ export default function SessionCard({
         <span>Dibuat {dateFormat.format(new Date(session.created_at))}</span>
         <span aria-hidden="true">·</span>
         <span>
-          {pluginCount === null ? 'Plugin: —' : `${pluginCount} plugin aktif`}
+          {commandCount === null ? 'Command: —' : `${commandCount} command aktif`}
         </span>
       </div>
     </article>
