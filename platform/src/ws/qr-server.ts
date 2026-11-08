@@ -11,6 +11,8 @@ import { getSession, syncStatus } from '../session/store';
 import type { JWTPayload } from '../types/auth';
 
 const POLL_INTERVAL_MS = 2000;
+// Cek status session di DB tiap 5 tick, bukan tiap tick: satu query per 10 detik per socket.
+const DB_CHECK_EVERY = 5;
 // ws: 1 = OPEN, tapi `ws` hanya expose konstanta ini sebagai static, bukan di instance.
 const SOCKET_OPEN = 1;
 const POLICY_VIOLATION = 1008;
@@ -26,9 +28,8 @@ function instancePairingPath(sessionId: string): string {
   return instanceQrPath(sessionId).replace(/qr\.txt$/, 'pairing.txt');
 }
 
-// Bot menulis connected.txt saat connection === 'open'. Di mode pairing qr.txt tidak pernah
-// dibuat (jadi tidak pernah dihapus), maka file ini yang jadi sinyal connect ke platform.
-// Path-nya dipakai bersama session/routes.ts (reconcile status) lewat paths.ts.
+// Bot menulis connected.txt saat connection === 'open'; di mode pairing qr.txt tidak pernah
+// dibuat, jadi file ini yang jadi sinyal connect (dipakai juga oleh session/routes.ts).
 
 async function readTextFile(path: string): Promise<string | null> {
   if (!existsSync(path)) return null;
@@ -74,6 +75,7 @@ export default async function qrServer(app: FastifyInstance): Promise<void> {
 
     let stopped = false;
     let busy = false;
+    let tickCount = 0;
     let lastQr: string | null = null;
     let lastPairing: string | null = null;
     let timer: NodeJS.Timeout | null = null;
@@ -167,19 +169,21 @@ export default async function qrServer(app: FastifyInstance): Promise<void> {
       busy = true;
 
       try {
-        // Status DB dicek tiap tick (2 detik) supaya session yang dihapus atau sudah
-        // active dari luar langsung menghentikan polling.
-        const current = await getSession(payload.userId, sessionId);
-        if (!current) {
-          send({ type: 'error', message: 'Session tidak ditemukan' });
-          stop();
-          socket.close(POLICY_VIOLATION, 'session not found');
-          return;
+        // Status DB cukup dicek tiap 5 tick (10 detik); connected.txt tetap dicek tiap tick.
+        if (tickCount % DB_CHECK_EVERY === 0) {
+          const current = await getSession(payload.userId, sessionId);
+          if (!current) {
+            send({ type: 'error', message: 'Session tidak ditemukan' });
+            stop();
+            socket.close(POLICY_VIOLATION, 'session not found');
+            return;
+          }
+          if (current.status === 'active') {
+            finishConnected();
+            return;
+          }
         }
-        if (current.status === 'active') {
-          finishConnected();
-          return;
-        }
+        tickCount += 1;
 
         // Cek paling awal: begitu bot terhubung, hentikan polling tanpa menunggu qr.txt hilang.
         if (existsSync(instanceConnectedPath(sessionId))) {

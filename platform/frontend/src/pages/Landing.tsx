@@ -144,10 +144,8 @@ const FAQS = [
   },
 ];
 
-// Fade-in halus saat elemen masuk viewport.
-// Pakai inline style, bukan class: React menulis ulang className elemen yang class-nya
-// dinamis (mis. faq-item saat accordion dibuka), sehingga class imperatif seperti
-// 'is-visible' hilang dan elemen kembali transparan.
+// Fade-in saat elemen masuk viewport. Inline style, bukan class: React menulis ulang
+// className elemen ber-class dinamis (faq-item), jadi class 'is-visible' akan hilang.
 function revealElement(node: HTMLElement): void {
   node.style.opacity = '1';
   node.style.transform = 'translateY(0)';

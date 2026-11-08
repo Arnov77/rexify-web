@@ -45,9 +45,8 @@ export interface CommandAccess {
   keepCategories: string[] | null;
 }
 
-// Gating command per plan: free hanya dapat fitur inti, pro menambah AI/hiburan,
-// enterprise membuka semua plugin berat. `owner` tetap terkunci untuk semua plan
-// lewat flag `locked` katalog.
+// Gating command per plan: free dapat fitur inti, pro menambah AI/hiburan, enterprise
+// membuka semua. Plugin `owner` tetap terkunci untuk semua plan lewat flag `locked`.
 export const PLAN_COMMANDS: Record<PlanName, CommandAccess> = {
   free: {
     keepCategories: ['group', 'info', 'tools', 'search', 'sticker', 'downloader', 'premium'],

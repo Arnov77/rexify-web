@@ -65,16 +65,8 @@ export const DEFAULT_CUSTOM_SETTINGS: CustomSettings = {
   git_token: '',
 };
 
-/**
- * Nilai default config.json instance rex-bot-v2, sebelum ditimpa setting user.
- * core/lib/global.js melakukan `Object.assign(global, config)` lalu langsung memakai
- * global.id.saluran, global.ownername, global.web, dan global.thumbnailUrl — jadi key
- * tersebut wajib ada walau nilainya kosong.
- *
- * Blok `midtrans`, `token.midtrans*`, dan `proxy` sengaja tidak dikirim (MVP tanpa
- * pembayaran). Core memakai default internal lewat optional chaining, dan webhook
- * pembayaran tidak dijalankan selama server key kosong.
- */
+// Default config.json instance rex-bot-v2. core/lib/global.js melakukan
+// `Object.assign(global, config)`, jadi semua key yang dipakai core wajib ada walau kosong.
 export function defaultBotConfig(): BotConfigFile {
   return {
     botname: 'Rexify Bot',

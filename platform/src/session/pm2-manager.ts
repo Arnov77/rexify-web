@@ -138,9 +138,8 @@ async function pm2Describe(name: string): Promise<Pm2Process | null> {
   });
 }
 
-// Path log sebenarnya menurut PM2. Jauh lebih andal daripada menebak lewat
-// $PM2_HOME / $HOME, karena daemon PM2 bisa jalan sebagai user atau PM2_HOME lain
-// dari proses platform (kasus itu bikin panel menampilkan file log lama).
+// Path log menurut PM2, bukan tebakan $PM2_HOME: daemon bisa jalan dengan user atau
+// PM2_HOME lain dari proses platform (kalau salah, panel menampilkan file log lama).
 export async function getSessionLogPaths(
   sessionId: string,
 ): Promise<{ out: string | null; err: string | null }> {
@@ -278,9 +277,8 @@ export async function stopSession(sessionId: string): Promise<void> {
   await syncStatus(sessionId, 'disconnected');
 }
 
-// Restart = stop lalu spawn ulang. Spawn sengaja tidak diganti `pm2 restart` karena
-// config.json dan env (CONNECT_MODE, PHONE_NUMBER, watermark) harus di-generate ulang;
-// di mode 'other' spawn juga mengirim ulang env ke Bot Runner.
+// Restart = stop lalu spawn ulang, bukan `pm2 restart`: config.json dan env
+// (CONNECT_MODE, PHONE_NUMBER, watermark) harus di-generate ulang.
 export async function restartSession(sessionId: string): Promise<void> {
   const session = await getSessionById(sessionId);
   if (!session) {

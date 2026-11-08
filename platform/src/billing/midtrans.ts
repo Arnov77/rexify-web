@@ -81,9 +81,8 @@ export async function chargeQris(
   };
 }
 
-// Batalkan transaksi di Midtrans (Core API: POST /v2/{order_id}/cancel).
-// Dipakai saat user membatalkan pembayaran pending; kalau gagal, pemanggil tetap boleh
-// menandai transaksi lokal sebagai failed — webhook settlement nanti tetap menang.
+// Batalkan transaksi di Midtrans (POST /v2/{order_id}/cancel). Gagal di sini tidak
+// menghalangi penutupan transaksi lokal: webhook settlement tetap menang kalau sudah dibayar.
 export async function cancelCharge(orderId: string): Promise<void> {
   const res = await fetch(`${baseUrl()}/v2/${encodeURIComponent(orderId)}/cancel`, {
     method: 'POST',

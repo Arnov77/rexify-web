@@ -69,9 +69,8 @@ async function main(): Promise<void> {
   // sendiri di dalam plugin ini.
   await app.register(billingRoutes);
 
-  // Ops-only: refresh katalog tanpa restart. Butuh header `x-catalog-token` yang sama
-  // dengan env CATALOG_REFRESH_TOKEN. Mode 'other' = generate di Bot Runner lalu file
-  // disimpan di platform; mode 'same' = jalankan generator lokal.
+  // Ops-only: refresh katalog tanpa restart, header `x-catalog-token` = env CATALOG_REFRESH_TOKEN.
+  // Mode 'other' = generate di Bot Runner; mode 'same' = jalankan generator lokal.
   app.post('/api/ops/catalog/refresh', async (request, reply) => {
     const expected = process.env.CATALOG_REFRESH_TOKEN ?? '';
     if (!expected) {

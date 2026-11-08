@@ -105,8 +105,8 @@ export default function QRModal({
       setError(message);
     }
 
-    // Bot butuh beberapa detik untuk spawn dan menulis qr.txt. Error/close socket di awal
-    // bukan berarti gagal total, jadi selama masih waiting error ditahan sampai grace lewat.
+    // Bot butuh beberapa detik untuk spawn dan menulis qr.txt, jadi error di awal ditahan
+    // sampai grace lewat selama status masih waiting.
     function failUnlessWaitingYoung(message: string) {
       // Socket memang ditutup server setelah pairing sukses; itu bukan error.
       if (statusRef.current === 'connected') return;

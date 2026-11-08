@@ -2,10 +2,8 @@ import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import type { CommandCatalog, CommandEntry } from '../types/config';
 
-// Katalog di-generate dari core: `cd core && npm run catalog`
-// (menulis ke platform/src/config/commands.catalog.json). Disimpan sebagai file supaya
-// platform tidak perlu meng-import 197 plugin core saat runtime.
-// tsc tidak menyalin file .json ke dist, jadi cari juga di folder src saat production.
+// Katalog di-generate dari core (`cd core && npm run catalog`) dan disimpan sebagai file
+// supaya platform tidak perlu meng-import 197 plugin core saat runtime (tsc tidak menyalin .json).
 const CATALOG_CANDIDATES = [
   path.join(__dirname, 'commands.catalog.json'),
   path.join(__dirname, '..', '..', 'src', 'config', 'commands.catalog.json'),
@@ -13,36 +11,39 @@ const CATALOG_CANDIDATES = [
 ];
 
 let cached: CommandCatalog | null = null;
+let entryIndex: Map<string, CommandEntry> | null = null;
+let categoryCache: CategorySummary[] | null = null;
 
-// Saat mode 'other' katalog disalin manual oleh ops; file di `src/` bisa lebih baru
-// daripada salinan di `dist/` (build lama). Pilih file dengan mtime terbaru supaya
-// salinan baru tidak "kalah" oleh file lama.
+// Salinan di `src/` bisa lebih baru dari `dist/` (build lama), jadi yang dipakai file
+// dengan mtime terbaru. Hanya file terpilih yang dibaca, bukan semua kandidat.
 function readCatalogFile(): CommandCatalog | null {
-  let newest: { mtimeMs: number; catalog: CommandCatalog } | null = null;
+  const candidates: Array<{ mtimeMs: number; file: string }> = [];
 
   for (const candidate of CATALOG_CANDIDATES) {
     try {
-      const mtimeMs = statSync(candidate).mtimeMs;
-      const raw = readFileSync(candidate, 'utf8');
-      const parsed = JSON.parse(raw) as CommandCatalog;
-
-      if (!newest || mtimeMs > newest.mtimeMs) {
-        newest = {
-          mtimeMs,
-          catalog: {
-            generatedAt: parsed.generatedAt,
-            source: parsed.source,
-            total: parsed.total,
-            commands: Array.isArray(parsed.commands) ? parsed.commands : [],
-          },
-        };
-      }
+      candidates.push({ mtimeMs: statSync(candidate).mtimeMs, file: candidate });
     } catch {
-      // Kandidat tidak ada / rusak: lanjut ke berikutnya.
+      // Kandidat tidak ada: lewati.
     }
   }
 
-  return newest?.catalog ?? null;
+  candidates.sort((a, b) => b.mtimeMs - a.mtimeMs);
+
+  for (const { file } of candidates) {
+    try {
+      const parsed = JSON.parse(readFileSync(file, 'utf8')) as CommandCatalog;
+      return {
+        generatedAt: parsed.generatedAt,
+        source: parsed.source,
+        total: parsed.total,
+        commands: Array.isArray(parsed.commands) ? parsed.commands : [],
+      };
+    } catch {
+      // File rusak: pakai kandidat berikutnya.
+    }
+  }
+
+  return null;
 }
 
 function loadCatalog(): CommandCatalog {
@@ -60,6 +61,8 @@ export function getCommandCatalog(): CommandCatalog {
 /** Setelah `commands.catalog.json` ditulis ulang, cache harus dibuang. */
 export function invalidateCatalogCache(): void {
   cached = null;
+  entryIndex = null;
+  categoryCache = null;
 }
 
 export interface CategorySummary {
@@ -98,16 +101,23 @@ function labelize(id: string): string {
 }
 
 export function getCategories(): CategorySummary[] {
+  if (categoryCache) return categoryCache;
+
   const counts = new Map<string, number>();
   for (const entry of getCommandCatalog().commands) {
     counts.set(entry.category, (counts.get(entry.category) ?? 0) + 1);
   }
 
-  return [...counts.entries()]
+  categoryCache = [...counts.entries()]
     .map(([id, total]) => ({ id, label: CATEGORY_LABELS[id] ?? labelize(id), total }))
     .sort((a, b) => a.label.localeCompare(b.label, 'id'));
+
+  return categoryCache;
 }
 
 export function findCommandEntry(file: string): CommandEntry | undefined {
-  return getCommandCatalog().commands.find((entry) => entry.file === file);
+  if (!entryIndex) {
+    entryIndex = new Map(getCommandCatalog().commands.map((entry) => [entry.file, entry]));
+  }
+  return entryIndex.get(file);
 }

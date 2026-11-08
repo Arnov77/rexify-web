@@ -193,7 +193,7 @@
   flex-direction: column;
 }
 
-/* ---------- Console panel ---------- */
+/* Console panel */
 .console-panel {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);

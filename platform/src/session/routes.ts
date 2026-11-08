@@ -87,9 +87,8 @@ function isBotRunning(status: string): boolean {
   return status === 'active' || status === 'connecting' || status === 'qr_pending';
 }
 
-// Status di DB hanya diperbarui saat modal QR terbuka. Kalau bot connect setelah itu
-// (reconnect otomatis, restart 515 setelah pairing), DB bisa tertinggal di 'connecting'.
-// Karena itu status diselaraskan dari keadaan asli proses + connected.txt setiap dibaca.
+// DB hanya diperbarui saat modal QR terbuka, jadi status diselaraskan dari proses asli +
+// connected.txt setiap dibaca (bot bisa connect sendiri setelah modal ditutup).
 async function reconcileStatus(sessions: SessionRow[]): Promise<SessionRow[]> {
   return Promise.all(
     sessions.map(async (session) => {

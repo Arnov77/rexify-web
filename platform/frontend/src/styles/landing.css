@@ -50,7 +50,7 @@
   padding: 0 var(--space-lg);
 }
 
-/* ---------- Navbar ---------- */
+/* Navbar */
 .landing-nav {
   position: sticky;
   top: 0;
@@ -99,7 +99,7 @@
   gap: var(--space-sm);
 }
 
-/* ---------- Buttons ---------- */
+/* Buttons */
 .landing-btn {
   display: inline-flex;
   align-items: center;
@@ -150,7 +150,7 @@
   width: 100%;
 }
 
-/* ---------- Section shell ---------- */
+/* Section shell */
 .landing-section {
   padding: var(--space-3xl) 0;
 }
@@ -182,7 +182,7 @@
   color: var(--color-text-secondary);
 }
 
-/* ---------- Hero ---------- */
+/* Hero */
 .hero {
   position: relative;
   padding: var(--space-3xl) 0;
@@ -214,7 +214,7 @@
   margin-top: var(--space-xl);
 }
 
-/* ---------- How it works ---------- */
+/* How it works */
 .steps {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -249,7 +249,7 @@
   color: var(--color-text-secondary);
 }
 
-/* ---------- Fitur ---------- */
+/* Fitur */
 .features {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -313,7 +313,7 @@
 }
 
 
-/* ---------- Pricing ---------- */
+/* Pricing */
 .pricing {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -395,7 +395,7 @@
   padding-top: var(--space-base);
 }
 
-/* ---------- FAQ ---------- */
+/* FAQ */
 .faq {
   display: flex;
   flex-direction: column;
@@ -474,7 +474,7 @@
   opacity: 1;
 }
 
-/* ---------- CTA bottom ---------- */
+/* CTA bottom */
 .cta-band {
   padding: var(--space-3xl) 0;
   background: var(--color-surface);
@@ -499,7 +499,7 @@
   color: var(--color-text-secondary);
 }
 
-/* ---------- Footer ---------- */
+/* Footer */
 .landing-footer {
   padding: var(--space-xl) 0;
 }
@@ -527,7 +527,7 @@
 }
 
 
-/* ---------- Reveal on scroll ---------- */
+/* Reveal on scroll */
 [data-reveal] {
   opacity: 0;
   transform: translateY(20px);
@@ -548,7 +548,7 @@
   }
 }
 
-/* ---------- Responsive ---------- */
+/* Responsive */
 @media (max-width: 1023px) {
   .features {
     grid-template-columns: repeat(2, minmax(0, 1fr));

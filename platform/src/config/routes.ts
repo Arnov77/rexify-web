@@ -120,9 +120,8 @@ export default async function configRoutes(app: FastifyInstance): Promise<void> 
       for (const field of LOCKED_FREE_FIELDS) delete cs[field];
     }
 
-    // Saring di server: command owner tidak boleh dimatikan, dan plan hanya boleh menyentuh
-    // katalog yang tersedia untuknya (anti-bypass lewat request manual). Path lama di luar
-    // katalog dibiarkan apa adanya supaya toggle lain tidak menghapusnya diam-diam.
+    // Saring di server (anti-bypass request manual): command owner tidak boleh dimatikan dan
+    // plan hanya boleh menyentuh katalognya. Path di luar katalog dibiarkan apa adanya.
     if (Array.isArray(body.commandsDisabled)) {
       const allowed = allowedFileSetForPlan(request.user.plan);
       body.commandsDisabled = body.commandsDisabled.filter((file) => {
@@ -188,7 +187,6 @@ export default async function configRoutes(app: FastifyInstance): Promise<void> 
   // Preset mengisi `commands_disabled` sekaligus berdasarkan kategori katalog; toggle
   // per file tetap bisa diubah lagi sesudahnya. Plugin owner tetap tidak bisa dimatikan.
   app.post('/api/sessions/:sessionId/config/presets/:presetId', async (request, reply) => {
-
     const { sessionId, presetId } = request.params as PresetParams;
     const preset = findPreset(presetId);
 

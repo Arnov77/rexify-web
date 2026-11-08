@@ -1,6 +1,5 @@
-// Streaming log bot realtime ke frontend via WebSocket.
-// Same mode: baca file log PM2 langsung dari disk.
-// Other mode: proxy WS ke Bot Runner.
+// Streaming log bot realtime via WebSocket: mode 'same' baca file log PM2 dari disk,
+// mode 'other' proxy WS ke Bot Runner.
 
 import { existsSync } from 'node:fs';
 import { open } from 'node:fs/promises';
@@ -100,12 +99,8 @@ function normalizeTimes(lines: string[]): Array<number | null> {
   });
 }
 
-/**
- * PM2 hanya menempel timestamp di baris pertama tiap chunk; baris lanjutan
- * (mis. "╰ Error: ENOENT ...") tidak punya timestamp. Baris seperti itu mewarisi
- * timestamp baris sebelumnya dari file yang sama, supaya ikut urutan aslinya dan
- * tidak menumpuk di paling bawah.
- */
+// PM2 hanya menempel timestamp di baris pertama tiap chunk; baris lanjutan mewarisi
+// timestamp baris sebelumnya supaya tidak menumpuk di paling bawah.
 function withInheritedTimes(lines: string[]): Array<{ line: string; time: number | null }> {
   const times = normalizeTimes(lines);
   // Baris pembuka tanpa timestamp (chunk terpotong) ikut timestamp pertama yang ada.
@@ -118,11 +113,8 @@ function withInheritedTimes(lines: string[]): Array<{ line: string; time: number
   });
 }
 
-/**
- * Gabungkan baris out.log dan error.log berdasarkan timestamp.
- * Tanpa ini, baris error lama selalu ditempel di bawah baris out terbaru
- * (history dikirim ulang tiap panel console dibuka).
- */
+// Gabungkan out.log dan error.log berdasarkan timestamp; tanpa ini baris error lama
+// selalu menempel di bawah baris out terbaru.
 export function mergeChronological(outLines: string[], errLines: string[]): string[] {
   const tagged = [
     ...withInheritedTimes(outLines).map((item, index) => ({ ...item, index })),

@@ -1,7 +1,5 @@
-// Ops: refresh katalog command tanpa restart platform.
-//   npm run catalog:refresh
-// Token dibaca dari `.env` (CATALOG_REFRESH_TOKEN), URL dari PLATFORM_URL
-// (default http://127.0.0.1:3000). Tidak perlu export variabel di shell.
+// Ops: refresh katalog command tanpa restart platform (`npm run catalog:refresh`).
+// Token dari `.env` (CATALOG_REFRESH_TOKEN), URL dari PLATFORM_URL (default :3000).
 const token = process.env.CATALOG_REFRESH_TOKEN ?? '';
 if (!token) {
   console.error('[catalog] CATALOG_REFRESH_TOKEN kosong. Isi dulu di platform/.env');

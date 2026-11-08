@@ -21,10 +21,8 @@ interface ConfigAuditRow {
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
 
-/**
- * Catat perubahan setelan bot. Kegagalan audit tidak boleh menggagalkan penyimpanan
- * config (audit hanya jejak, bukan sumber kebenaran).
- */
+// Catat perubahan setelan bot. Gagal audit tidak boleh menggagalkan penyimpanan config
+// (audit hanya jejak, bukan sumber kebenaran).
 export async function logConfigChange(
   userId: string,
   sessionId: string,

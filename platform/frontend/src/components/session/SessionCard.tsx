@@ -10,7 +10,6 @@ interface SessionCardProps {
   busy: boolean;
   // Restart hanya masuk akal untuk bot aktif; loading ditahan di tombolnya sendiri.
   restarting?: boolean;
-  // Panel console sedang terbuka untuk kartu ini.
   logOpen?: boolean;
   onConnect: (session: Session) => void;
   onDisconnect: (session: Session) => void;

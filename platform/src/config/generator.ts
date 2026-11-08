@@ -3,41 +3,39 @@ import { mkdir, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { pool } from '../db';
 import { instanceConfigPath } from '../paths';
-import { getSessionById } from '../session/store';
 import type { BotConfigFile } from '../types/config';
 import { pushConfigRemote } from '../session/bot-runner-client';
 import { defaultConfigFor, getConfig } from './bot-config';
 import { defaultBotConfig } from './defaults';
 
-// generateConfig tidak menerima plan user, jadi diambil lewat join sessions -> users.
-async function planOfSession(sessionId: string): Promise<string> {
-  const { rows } = await pool.query<{ plan: string }>(
-    `SELECT u.plan
-     FROM users u
-     JOIN sessions s ON s.user_id = u.id
+// generateConfig tidak menerima plan user, jadi plan + nomor input diambil lewat join.
+async function sessionContext(sessionId: string): Promise<{ plan: string; phone: string }> {
+  const { rows } = await pool.query<{ plan: string; phone_number_input: string | null }>(
+    `SELECT u.plan, s.phone_number_input
+     FROM sessions s
+     JOIN users u ON u.id = s.user_id
      WHERE s.id = $1::uuid`,
     [sessionId],
   );
-  return rows[0]?.plan ?? 'free';
+
+  const row = rows[0];
+  if (!row) {
+    throw new Error(`session ${sessionId} tidak ditemukan`);
+  }
+
+  return { plan: row.plan, phone: row.phone_number_input ?? '' };
 }
 
 export async function generateConfig(sessionId: string): Promise<BotConfigFile> {
   // Row config belum ada saat connect pertama: pakai default in-memory, bukan insert, karena
   // createDefaultConfig dipanggil spawnSession setelah proses PM2 hidup.
   const config = (await getConfig(sessionId)) ?? defaultConfigFor(sessionId);
-  const session = await getSessionById(sessionId);
-
-  if (!session) {
-    throw new Error(`session ${sessionId} tidak ditemukan`);
-  }
-
-  const plan = await planOfSession(sessionId);
+  // Nomor dari form tambah session, bukan phone_number hasil Baileys: config.json ditulis
+  // sebelum bot sempat connect, jadi phone_number masih null.
+  const { plan, phone } = await sessionContext(sessionId);
 
   const base = defaultBotConfig();
   const cs = config.customSettings;
-  // Pakai nomor dari form tambah session, bukan phone_number hasil Baileys: config.json
-  // ditulis sebelum bot sempat connect, jadi phone_number masih null.
-  const phone = session.phone_number_input ?? '';
 
   const file: BotConfigFile = {
     ...base,
@@ -112,14 +110,8 @@ function isRemoteRunnerMode(): boolean {
   return process.env.BOT_RUNNER_MODE === 'other';
 }
 
-/**
- * Terapkan config terbaru ke instance bot tanpa restart.
- * - mode 'same': tulis config.json di mesin platform (folder instance ada di sini).
- * - mode 'other': config.json milik bot ada di mesin Bot Runner, jadi dikirim lewat HTTP.
- *   Runner menulisnya atomik; watcher core lalu memuat ulang `commands_disabled` + `limit`.
- * Kegagalan push tidak boleh menggagalkan PATCH (DB sudah tersimpan; config dikirim lagi
- * saat /spawn berikutnya).
- */
+// Terapkan config terbaru ke instance bot tanpa restart: mode 'same' tulis file lokal,
+// mode 'other' kirim lewat HTTP. Push gagal tidak menggagalkan PATCH (dikirim lagi saat spawn).
 export async function applyConfigToBot(sessionId: string): Promise<void> {
   if (!isRemoteRunnerMode()) {
     await syncInstanceConfig(sessionId);

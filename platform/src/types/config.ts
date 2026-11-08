@@ -110,10 +110,8 @@ export interface PremiumPackage {
   permanent?: boolean;
 }
 
-// Bentuk config.json yang dibaca instance rex-bot-v2 (lib/global.js melakukan
-// Object.assign(global, config), jadi semua key yang dipakai core wajib ada).
-// Blok midtrans & proxy sengaja tidak ditulis: core memakai default-nya sendiri
-// lewat optional chaining, dan webhook mati kalau server key kosong (MVP).
+// Bentuk config.json yang dibaca instance rex-bot-v2: semua key yang dipakai core wajib ada.
+// Blok midtrans & proxy sengaja tidak ditulis, core memakai default-nya sendiri.
 export interface BotConfigFile {
   botname: string;
   ownername: string;

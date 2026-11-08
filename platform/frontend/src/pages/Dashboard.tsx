@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import AppLayout from '../components/layout/AppLayout';
 import AddSessionModal from '../components/session/AddSessionModal';
 import ConsolePanel from '../components/session/ConsolePanel';
@@ -206,6 +206,12 @@ export default function Dashboard() {
   const runningCount = sessions.filter((session) => RUNNING_STATUSES.has(session.status)).length;
   const quota = limits?.sessions ?? 0;
 
+  // Array baru tiap render bikin Sidebar ikut render ulang tanpa perubahan data.
+  const sidebarSessions = useMemo(
+    () => sessions.map((session) => ({ id: session.id, label: session.label, status: session.status })),
+    [sessions],
+  );
+
   const handleConnected = useCallback(async () => {
     setQrSession(null);
     await load();
@@ -219,7 +225,7 @@ export default function Dashboard() {
       plan={user?.plan ?? 'free'}
       trialEndsAt={user?.trial_ends_at ?? null}
       planExpiresAt={user?.plan_expires_at ?? null}
-      sessions={sessions.map((s) => ({ id: s.id, label: s.label, status: s.status }))}
+      sessions={sidebarSessions}
       onLogout={logout}
     >
       {sessions.length > 0 && (

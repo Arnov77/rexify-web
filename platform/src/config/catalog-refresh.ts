@@ -25,9 +25,8 @@ export class CatalogRefreshUnavailableError extends Error {
   }
 }
 
-// Mode 'other' = core ada di mesin Bot Runner. Katalog di-generate manual oleh ops di mesin
-// runner (lihat README bot-runner: `node scripts/list-commands.mjs` / endpoint POST /catalog),
-// lalu file katalog di platform diperbarui saat deploy. UI user hanya membaca hasilnya.
+// Mode 'other' = core ada di mesin Bot Runner: katalog di-generate di sana (POST /catalog),
+// lalu file di platform diperbarui saat deploy. UI user hanya membaca hasilnya.
 export function isRemoteCatalogMode(): boolean {
   return process.env.BOT_RUNNER_MODE === 'other';
 }

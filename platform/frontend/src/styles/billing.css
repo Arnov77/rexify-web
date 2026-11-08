@@ -1,4 +1,4 @@
-/* ---------- Status plan ---------- */
+/* Status plan */
 .billing-status {
   display: flex;
   flex-wrap: wrap;
@@ -25,7 +25,7 @@
   margin-top: var(--space-base);
 }
 
-/* ---------- Badge ---------- */
+/* Badge */
 .billing-badge {
   display: inline-flex;
   align-items: center;
@@ -63,7 +63,7 @@
   color: var(--color-text-secondary);
 }
 
-/* ---------- Kartu paket ---------- */
+/* Kartu paket */
 .billing-plans {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -125,7 +125,7 @@
   color: var(--color-success);
 }
 
-/* ---------- Riwayat transaksi ---------- */
+/* Riwayat transaksi */
 .billing-table-wrap {
   overflow-x: auto;
   border: 1px solid var(--color-border);
@@ -162,7 +162,7 @@
   gap: var(--space-sm);
 }
 
-/* ---------- Modal pembayaran ---------- */
+/* Modal pembayaran */
 .billing-modal {
   position: relative;
   align-items: center;
