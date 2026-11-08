@@ -25,3 +25,5 @@ instances/
 
 # Sertifikat yang dihasilkan runtime/tooling
 platform/ca.pem
+.clinerules/antislop.md
+.clinerules/ponytail.md
