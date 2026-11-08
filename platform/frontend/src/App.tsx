@@ -5,6 +5,7 @@ import { AuthProvider } from './lib/auth';
 import Billing from './pages/Billing';
 import Dashboard from './pages/Dashboard';
 import ForgotPassword from './pages/ForgotPassword';
+import GoogleCallback from './pages/GoogleCallback';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -22,6 +23,8 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
+            {/* Tujuan redirect /api/auth/google/callback; token di query langsung dibuang. */}
+            <Route path="/auth/google/callback" element={<GoogleCallback />} />
             {/* Semi-protected: butuh login, tapi belum harus verified (halaman ini justru memverifikasi). */}
             <Route path="/verify-email" element={<VerifyEmail />} />
 

@@ -16,7 +16,8 @@ export interface AuthUser {
 export interface UserRow {
   id: string;
   email: string;
-  password_hash: string;
+  // null untuk akun yang dibuat lewat Google (tidak punya password).
+  password_hash: string | null;
   plan: string;
   trial_ends_at: Date | null;
   plan_expires_at: Date | null;

@@ -3,6 +3,7 @@ import Fastify from 'fastify';
 import jwt from '@fastify/jwt';
 import websocket from '@fastify/websocket';
 import { authMiddleware } from './auth/middleware';
+import googleRoutes from './auth/google';
 import loginRoutes from './auth/login';
 import billingRoutes from './billing/routes';
 import registerRoutes from './auth/register';
@@ -62,6 +63,8 @@ async function main(): Promise<void> {
 
   await app.register(registerRoutes);
   await app.register(loginRoutes);
+  // OAuth Google: /api/auth/google (redirect) dan /api/auth/google/callback (terbitkan JWT).
+  await app.register(googleRoutes);
   // send-otp (verify/email terverifikasi boleh belum verified) dan reset-password publik;
   // endpoint verify tetap memvalidasi JWT sendiri di dalam handler.
   await app.register(verifyRoutes);

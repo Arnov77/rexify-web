@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { IconGoogle } from '../components/icons';
 import Logo from '../components/Logo';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
@@ -88,6 +89,15 @@ export default function Register() {
             Buat akun
           </Button>
         </form>
+
+        <p className="auth-divider">atau</p>
+
+        <a className="btn btn--secondary btn--lg btn--block" href="/api/auth/google">
+          <span>
+            <IconGoogle size={18} />
+            Daftar dengan Google
+          </span>
+        </a>
 
         <p className="auth-note">Trial 7 hari aktif langsung, tanpa verifikasi email.</p>
         <p className="auth-footer">

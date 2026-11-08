@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { IconGoogle } from '../components/icons';
 import Logo from '../components/Logo';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
@@ -7,9 +8,23 @@ import { ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import '../styles/auth.css';
 
+// Kode dari server di /login?google_error=<kode> (lihat auth/google.ts).
+const GOOGLE_ERRORS: Record<string, string> = {
+  cancelled: 'Login Google dibatalkan.',
+  state: 'Sesi login Google kedaluwarsa, coba lagi.',
+  token: 'Google menolak permintaan login. Coba lagi.',
+  profile: 'Akun Google itu tidak mengirim alamat email. Pakai akun lain.',
+  server: 'Gagal memproses login Google. Coba lagi.',
+};
+
 export default function Login() {
   const { login, user, loading } = useAuth();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const googleError = params.get('google_error');
+  const googleErrorMessage = googleError
+    ? (GOOGLE_ERRORS[googleError] ?? 'Login Google gagal. Coba lagi.')
+    : null;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
@@ -87,6 +102,21 @@ export default function Login() {
             Masuk
           </Button>
         </form>
+
+        <p className="auth-divider">atau</p>
+
+        {googleErrorMessage && (
+          <p className="auth-error" role="alert">
+            {googleErrorMessage}
+          </p>
+        )}
+
+        <a className="btn btn--secondary btn--lg btn--block" href="/api/auth/google">
+          <span>
+            <IconGoogle size={18} />
+            Lanjutkan dengan Google
+          </span>
+        </a>
 
         <p className="auth-footer">
           <Link to="/forgot-password">Lupa password?</Link>

@@ -190,7 +190,15 @@ JEREXD_API_KEY=<key jerexd, opsional>
 BOT_RUNNER_MODE=other
 BOT_RUNNER_URL=https://bot-runner.rexapi.my.id
 BOT_RUNNER_SECRET=<sama persis dengan bot-runner/.env>
+GOOGLE_CLIENT_ID=<client id OAuth, akhiran .apps.googleusercontent.com>
+GOOGLE_CLIENT_SECRET=<client secret OAuth>
+GOOGLE_REDIRECT_URI=https://app.rexapi.my.id/api/auth/google/callback
 ```
+
+Login Google memakai OAuth 2.0 Authorization Code flow. Di Google Cloud Console
+(Credentials → OAuth client ID → Web application) daftarkan **Authorized redirect URI**
+persis seperti `GOOGLE_REDIRECT_URI` di atas. Kalau `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`
+kosong, `GET /api/auth/google` membalas 503 dan tombol Google di halaman masuk tidak bisa dipakai.
 
 `REXIFY_ROOT` tidak perlu di mode `other` (folder instance tidak dipakai di backend).
 
@@ -316,6 +324,11 @@ Harapan (setelah semua migrasi):
 002_session_connect.sql
 003_custom_settings_v2.sql
 004_email_verification.sql
+005_billing.sql
+006_billing_qr_code.sql
+007_commands_disabled.sql
+008_config_audit.sql
+009_google_auth.sql
 ```
 
 - Pool backend `max: 10` → batasi connection di provider (Neon/Supabase pooler) minimal ~15.

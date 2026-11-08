@@ -56,6 +56,23 @@
   color: var(--color-error);
 }
 
+/* Garis pemisah antara form email dan tombol Google. */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--text-caption);
+  color: var(--color-text-muted);
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
 /* Input OTP: satu field, angka besar mono, huruf dijarangkan. padding-left mengimbangi
    letter-spacing supaya teks tetap terlihat center. */
 .auth-otp {

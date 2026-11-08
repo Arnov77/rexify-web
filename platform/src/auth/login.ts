@@ -42,7 +42,8 @@ export default async function loginRoutes(app: FastifyInstance): Promise<void> {
       });
     }
 
-    const passwordOk = await verifyPassword(password, user.password_hash);
+    // Akun Google-only tidak punya password: compare ke hash dummy supaya timing tetap sama.
+    const passwordOk = await verifyPassword(password, user.password_hash ?? DUMMY_HASH);
     if (!passwordOk) {
       return reply.code(401).send({
         error: 'INVALID_CREDENTIALS',
