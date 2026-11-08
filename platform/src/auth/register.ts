@@ -7,13 +7,16 @@ import { hashPassword } from './password';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
 
+// Override rate limit global (100/menit): cegah pembuatan akun massal.
+const RATE_LIMIT_AUTH = { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } };
+
 interface RegisterBody {
   email?: unknown;
   password?: unknown;
 }
 
 export default async function registerRoutes(app: FastifyInstance): Promise<void> {
-  app.post('/api/auth/register', async (request, reply) => {
+  app.post('/api/auth/register', RATE_LIMIT_AUTH, async (request, reply) => {
     const body = (request.body ?? {}) as RegisterBody;
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
     const password = typeof body.password === 'string' ? body.password : '';

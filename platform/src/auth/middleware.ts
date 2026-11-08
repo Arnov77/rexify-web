@@ -4,6 +4,17 @@ import { pool } from '../db';
 import { isUuid } from '../session/store';
 import type { AuthUser, JWTPayload, UserRow } from '../types/auth';
 
+// Endpoint auth (send-otp/verify-email/reset-password) dan /api/me tetap terbuka supaya
+// frontend bisa menampilkan halaman verifikasi tanpa data user hilang.
+// Allowlist eksplisit: prefix '/api/auth/' juga mencakup /api/auth/password yang terproteksi.
+const UNVERIFIED_ALLOWED = new Set([
+  '/api/auth/send-otp',
+  '/api/auth/verify-email',
+  '/api/auth/reset-password',
+  '/api/auth/google/callback',
+  '/api/me',
+]);
+
 // User dibaca ulang dari DB tiap request supaya perubahan plan langsung berlaku.
 export async function authMiddleware(
   request: FastifyRequest,
@@ -55,9 +66,7 @@ export async function authMiddleware(
     has_google: user.google_id !== null,
   };
 
-  // Endpoint auth (send-otp/verify-email/reset-password) dan /api/me tetap terbuka supaya
-  // frontend bisa menampilkan halaman verifikasi tanpa data user hilang.
-  const allowedWhileUnverified = request.url.startsWith('/api/auth/') || request.url === '/api/me';
+  const allowedWhileUnverified = UNVERIFIED_ALLOWED.has(request.url.split('?')[0]);
 
   if (!authUser.email_verified && !allowedWhileUnverified) {
     await reply.code(403).send({

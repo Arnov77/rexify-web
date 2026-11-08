@@ -1,6 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import Fastify from 'fastify';
 import jwt from '@fastify/jwt';
+import rateLimit from '@fastify/rate-limit';
 import websocket from '@fastify/websocket';
 import accountRoutes from './auth/account';
 import { authMiddleware } from './auth/middleware';
@@ -57,6 +58,17 @@ async function main(): Promise<void> {
       error: 'NOT_FOUND',
       message: `Route ${request.method} ${request.url} tidak ditemukan`,
     });
+  });
+
+  // Batas global; endpoint auth menurunkan batasnya sendiri lewat route config.
+  await app.register(rateLimit, {
+    global: true,
+    max: 100,
+    timeWindow: '1 minute',
+    errorResponseBuilder: () => ({
+      error: 'RATE_LIMIT_EXCEEDED',
+      message: 'Terlalu banyak request, coba lagi sebentar.',
+    }),
   });
 
   await app.register(jwt, { secret: jwtSecret });

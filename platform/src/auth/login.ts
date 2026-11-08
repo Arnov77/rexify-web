@@ -8,13 +8,16 @@ import { verifyPassword } from './password';
 const DUMMY_HASH = '$2b$12$C6UzMDM.H6dfI/f/IKcEe.Mb7lVdFqO7xGZ8m0MStOQ2X6R5cM4Uu';
 const INVALID_CREDENTIALS = 'Email atau password salah';
 
+// Override rate limit global (100/menit): cegah credential stuffing.
+const RATE_LIMIT_AUTH = { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } };
+
 interface LoginBody {
   email?: unknown;
   password?: unknown;
 }
 
 export default async function loginRoutes(app: FastifyInstance): Promise<void> {
-  app.post('/api/auth/login', async (request, reply) => {
+  app.post('/api/auth/login', RATE_LIMIT_AUTH, async (request, reply) => {
     const body = (request.body ?? {}) as LoginBody;
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
     const password = typeof body.password === 'string' ? body.password : '';

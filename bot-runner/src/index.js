@@ -45,8 +45,22 @@ function coreExists() {
     return existsSync(CORE_DIR)
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 function sessionIdOf(request) {
-    return String(request.params?.sessionId ?? '').trim()
+    const id = String(request.params?.sessionId ?? '').trim()
+    if (!UUID_RE.test(id)) return null
+    return id
+}
+
+// Lapisan kedua: walau sessionId sudah UUID, path hasil resolve wajib tetap di dalam instances/.
+function safeInstanceDir(sessionId) {
+    const resolved = path.resolve(instanceDir(sessionId))
+    const base = path.resolve(path.join(rexifyRoot(), 'instances'))
+    if (!resolved.startsWith(base + path.sep)) {
+        throw new Error('path traversal detected')
+    }
+    return resolved
 }
 
 const execFileAsync = promisify(execFile)
@@ -99,7 +113,7 @@ app.post('/config/:sessionId', requireAuth, async (request, reply) => {
         return reply.code(400).send({ error: 'INVALID_BODY', message: 'configJson wajib diisi' })
     }
 
-    const dir = instanceDir(sessionId)
+    const dir = safeInstanceDir(sessionId)
     if (!existsSync(dir)) {
         // Instance belum pernah di-spawn di runner ini; config akan dikirim saat /spawn.
         return reply.code(404).send({ error: 'SESSION_NOT_FOUND' })
@@ -145,7 +159,7 @@ async function linkCoreEntries(dir) {
 }
 
 function signalPath(sessionId, name) {
-    return path.join(instanceDir(sessionId), name)
+    return path.join(safeInstanceDir(sessionId), name)
 }
 
 // File sinyal hidup-mati bot: connected.txt ditulis core saat connection === 'open',
@@ -166,7 +180,7 @@ async function readSignal(sessionId, name) {
 }
 
 async function prepareInstance(sessionId) {
-    const dir = instanceDir(sessionId)
+    const dir = safeInstanceDir(sessionId)
     await mkdir(dir, { recursive: true })
     await linkCoreEntries(dir)
     await mkdir(path.join(dir, 'sessions'), { recursive: true })
@@ -189,9 +203,17 @@ app.post('/spawn/:sessionId', requireAuth, async (request, reply) => {
         return reply.code(400).send({ error: 'INVALID_BODY', message: 'userId wajib diisi' })
     }
 
-    const extraEnv = body.env && typeof body.env === 'object' && !Array.isArray(body.env)
+    // Whitelist: env arbitrer dari body bisa dipakai untuk RCE (mis. NODE_OPTIONS=--require ...).
+    const ALLOWED_ENV_KEYS = ['PHONE_NUMBER', 'CONNECT_MODE', 'REXIFY_WATERMARK', 'QR_OUTPUT_PATH']
+
+    const rawEnv = body.env && typeof body.env === 'object' && !Array.isArray(body.env)
         ? body.env
         : {}
+
+    const extraEnv = {}
+    for (const key of ALLOWED_ENV_KEYS) {
+        if (typeof rawEnv[key] === 'string') extraEnv[key] = rawEnv[key]
+    }
 
     try {
         const dir = await prepareInstance(sessionId)
@@ -245,7 +267,7 @@ app.delete('/destroy/:sessionId', requireAuth, async (request, reply) => {
         await deleteBot(sessionId)
 
         // Hapus seluruh folder instance, termasuk sessions/ (auth WhatsApp) — bot dihapus total.
-        const dir = instanceDir(sessionId)
+        const dir = safeInstanceDir(sessionId)
         if (existsSync(dir)) {
             await rm(dir, { recursive: true, force: true })
         }
@@ -266,7 +288,7 @@ app.delete('/credentials/:sessionId', requireAuth, async (request, reply) => {
     }
 
     try {
-        const dir = path.join(instanceDir(sessionId), 'sessions')
+        const dir = path.join(safeInstanceDir(sessionId), 'sessions')
         if (existsSync(dir)) {
             await rm(dir, { recursive: true, force: true })
         }
@@ -291,7 +313,7 @@ app.get('/status/:sessionId', requireAuth, async (request, reply) => {
             connected,
             phone: connected ? await readSignal(sessionId, 'phone.txt') : null,
             // Credentials Baileys (SQLite auth) sudah ada → reconnect tidak perlu QR/pairing.
-            credentials: existsSync(path.join(instanceDir(sessionId), 'sessions', 'auth.db')),
+            credentials: existsSync(path.join(safeInstanceDir(sessionId), 'sessions', 'auth.db')),
         }
     } catch (error) {
         return internalError(request, reply, error)

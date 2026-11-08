@@ -14,6 +14,7 @@ const GOOGLE_ERRORS: Record<string, string> = {
   state: 'Sesi login Google kedaluwarsa, coba lagi.',
   token: 'Google menolak permintaan login. Coba lagi.',
   profile: 'Akun Google itu tidak mengirim alamat email. Pakai akun lain.',
+  email_not_verified: 'Email Google kamu belum terverifikasi.',
   server: 'Gagal memproses login Google. Coba lagi.',
 };
 

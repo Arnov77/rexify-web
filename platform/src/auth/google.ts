@@ -105,10 +105,16 @@ async function upsertUser(
   email: string,
   emailVerified: boolean,
 ): Promise<UserRow> {
-  const existing = await pool.query<UserRow>(
-    `SELECT ${USER_COLUMNS} FROM users WHERE google_id = $1 OR email = $2 LIMIT 1`,
-    [googleId, email],
-  );
+  // Email Google yang belum terverifikasi tidak boleh menautkan akun berdasarkan email.
+  const existing = emailVerified
+    ? await pool.query<UserRow>(
+        `SELECT ${USER_COLUMNS} FROM users WHERE google_id = $1 OR email = $2 LIMIT 1`,
+        [googleId, email],
+      )
+    : await pool.query<UserRow>(
+        `SELECT ${USER_COLUMNS} FROM users WHERE google_id = $1 LIMIT 1`,
+        [googleId],
+      );
 
   const found = existing.rows[0];
   if (found) {
@@ -170,6 +176,7 @@ export default async function googleRoutes(app: FastifyInstance): Promise<void> 
 
       const profile = await fetchProfile(accessToken);
       if (!profile?.sub || !profile.email) return fail(reply, 'profile');
+      if (profile.email_verified !== true) return fail(reply, 'email_not_verified');
 
       const user = await upsertUser(
         profile.sub,

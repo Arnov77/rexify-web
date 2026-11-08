@@ -10,9 +10,14 @@ const OTP_HASH_ROUNDS = 10;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
 const OTP_RE = /^\d{6}$/;
+const MAX_OTP_ATTEMPTS = 5;
+
+// Override rate limit global (100/menit): endpoint auth butuh batas jauh lebih ketat.
+const RATE_LIMIT_AUTH = { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } };
+const RATE_LIMIT_SEND_OTP = { config: { rateLimit: { max: 5, timeWindow: '5 minutes' } } };
 
 const COLUMNS =
-  'id, email, password_hash, plan, trial_ends_at, plan_expires_at, email_verified, otp_code, otp_expires_at, otp_type, otp_last_sent_at, created_at, updated_at';
+  'id, email, password_hash, plan, trial_ends_at, plan_expires_at, email_verified, otp_code, otp_expires_at, otp_type, otp_last_sent_at, otp_attempts, otp_locked_until, created_at, updated_at';
 
 type OtpType = 'verify' | 'reset';
 
@@ -21,6 +26,8 @@ interface OtpUserRow extends UserRow {
   otp_expires_at: Date | null;
   otp_type: string | null;
   otp_last_sent_at: Date | null;
+  otp_attempts: number | null;
+  otp_locked_until: Date | null;
 }
 
 interface SendOtpBody {
@@ -95,6 +102,27 @@ function isOtpExpired(user: OtpUserRow): boolean {
   return new Date(user.otp_expires_at).getTime() <= Date.now();
 }
 
+// Sisa detik lockout; 0 berarti OTP tidak sedang terkunci.
+function lockoutSeconds(user: OtpUserRow): number {
+  if (!user.otp_locked_until) return 0;
+  const remaining = new Date(user.otp_locked_until).getTime() - Date.now();
+  return remaining > 0 ? Math.ceil(remaining / 1000) : 0;
+}
+
+// Percobaan salah dihitung; percobaan ke-5 mengunci OTP selama 15 menit.
+async function registerFailedOtp(user: OtpUserRow): Promise<void> {
+  const attempts = (user.otp_attempts ?? 0) + 1;
+  const locked = attempts >= MAX_OTP_ATTEMPTS;
+  await pool.query(
+    `UPDATE users
+     SET otp_attempts = $2,
+         otp_locked_until = CASE WHEN $3 THEN now() + interval '15 minutes' ELSE NULL END,
+         updated_at = now()
+     WHERE id = $1::uuid`,
+    [user.id, attempts, locked],
+  );
+}
+
 async function clearOtp(userId: string): Promise<void> {
   await pool.query(
     `UPDATE users
@@ -110,7 +138,7 @@ async function clearOtp(userId: string): Promise<void> {
 
 export default async function verifyRoutes(app: FastifyInstance): Promise<void> {
   // Kirim / kirim ulang OTP. type 'verify' butuh JWT, type 'reset' cukup email.
-  app.post('/api/auth/send-otp', async (request, reply) => {
+  app.post('/api/auth/send-otp', RATE_LIMIT_SEND_OTP, async (request, reply) => {
     const body = (request.body ?? {}) as SendOtpBody;
     const type = parseOtpType(body.type);
 
@@ -190,7 +218,7 @@ export default async function verifyRoutes(app: FastifyInstance): Promise<void> 
   });
 
   // Verifikasi akun: butuh JWT (user sudah login) tapi boleh belum verified.
-  app.post('/api/auth/verify-email', async (request, reply) => {
+  app.post('/api/auth/verify-email', RATE_LIMIT_AUTH, async (request, reply) => {
     const authenticated = await currentUser(request);
     if (!authenticated) {
       return reply.code(401).send({
@@ -216,8 +244,17 @@ export default async function verifyRoutes(app: FastifyInstance): Promise<void> 
       });
     }
 
+    const lockedFor = lockoutSeconds(user);
+    if (lockedFor > 0) {
+      return reply.code(429).send({
+        error: 'OTP_LOCKED',
+        message: `Terlalu banyak percobaan. Coba lagi dalam ${lockedFor} detik.`,
+      });
+    }
+
     const valid = await bcrypt.compare(otp, user.otp_code);
     if (!valid) {
+      await registerFailedOtp(user);
       return reply.code(400).send({ error: 'INVALID_OTP', message: 'Kode verifikasi salah' });
     }
 
@@ -228,6 +265,8 @@ export default async function verifyRoutes(app: FastifyInstance): Promise<void> 
            otp_expires_at = NULL,
            otp_type = NULL,
            otp_last_sent_at = NULL,
+           otp_attempts = 0,
+           otp_locked_until = NULL,
            updated_at = now()
        WHERE id = $1::uuid`,
       [user.id],
@@ -237,7 +276,7 @@ export default async function verifyRoutes(app: FastifyInstance): Promise<void> 
   });
 
   // Reset password publik: email + OTP 'reset' + password baru.
-  app.post('/api/auth/reset-password', async (request, reply) => {
+  app.post('/api/auth/reset-password', RATE_LIMIT_AUTH, async (request, reply) => {
     const body = (request.body ?? {}) as ResetPasswordBody;
     const email = normalizeEmail(body.email);
     const otp = normalizeOtp(body.otp);
@@ -267,16 +306,30 @@ export default async function verifyRoutes(app: FastifyInstance): Promise<void> 
       });
     }
 
+    const lockedFor = lockoutSeconds(user);
+    if (lockedFor > 0) {
+      return reply.code(429).send({
+        error: 'OTP_LOCKED',
+        message: `Terlalu banyak percobaan. Coba lagi dalam ${lockedFor} detik.`,
+      });
+    }
+
     const valid = await bcrypt.compare(otp, user.otp_code);
     if (!valid) {
+      await registerFailedOtp(user);
       return reply.code(400).send({ error: 'INVALID_OTP', message: 'Kode reset salah' });
     }
 
     const passwordHash = await hashPassword(newPassword);
-    await pool.query('UPDATE users SET password_hash = $2, updated_at = now() WHERE id = $1::uuid', [
-      user.id,
-      passwordHash,
-    ]);
+    await pool.query(
+      `UPDATE users
+       SET password_hash = $2,
+           otp_attempts = 0,
+           otp_locked_until = NULL,
+           updated_at = now()
+       WHERE id = $1::uuid`,
+      [user.id, passwordHash],
+    );
     await clearOtp(user.id);
 
     return reply.code(200).send({ ok: true });
