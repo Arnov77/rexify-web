@@ -260,7 +260,7 @@
 }
 
 .console-panel__empty {
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   font-size: var(--text-caption);
 }
 
@@ -277,7 +277,7 @@
 
 .console-line__time {
   margin-right: var(--space-sm);
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
 }
 
 /* Atribut teks hasil urai ANSI SGR. Warna dipasang inline karena nilainya dinamis. */
@@ -304,7 +304,7 @@
   padding: var(--space-xs) var(--space-md);
   border-top: 1px solid var(--color-border-subtle);
   font-size: var(--text-caption);
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
 }
 
 .console-status {

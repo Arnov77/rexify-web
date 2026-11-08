@@ -526,6 +526,20 @@
   color: var(--color-error);
 }
 
+.landing-footer__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-base);
+}
+
+.landing-footer__links a {
+  color: var(--color-text-secondary);
+}
+
+.landing-footer__links a:hover {
+  color: var(--color-text-primary);
+}
+
 
 /* Reveal on scroll */
 [data-reveal] {

@@ -125,6 +125,11 @@ export default function Login() {
         <p className="auth-footer">
           Belum punya akun? <Link to="/register">Buat akun</Link>
         </p>
+
+        <p className="auth-footer">
+          Dengan masuk, kamu setuju pada <Link to="/terms">Syarat dan Ketentuan</Link> dan{' '}
+          <Link to="/privacy">Kebijakan Privasi</Link>.
+        </p>
       </div>
     </div>
   );

@@ -200,7 +200,8 @@
 }
 
 .subnav-dot--off {
-  background: var(--color-text-muted);
+  /* Token status, bukan token teks: DESIGN.md §2 memakai #55555f untuk bot disconnected. */
+  background: var(--status-disconnected);
 }
 
 .session-subnav__item .subnav-dot {

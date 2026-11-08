@@ -1,0 +1,138 @@
+/* Halaman dokumen publik (Syarat, Kebijakan Privasi). Warna hanya dari token themes
+   supaya dark dan light sama-sama lolos kontras: teks isi pakai text-primary. */
+.legal-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+}
+
+.legal-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-base) var(--space-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.legal-header__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.legal-header__logo {
+  display: block;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  object-fit: contain;
+}
+
+.legal-header__back {
+  font-size: var(--text-caption);
+  color: var(--color-text-secondary);
+}
+
+.legal-header__back:hover {
+  color: var(--color-text-primary);
+}
+
+.legal-doc {
+  flex: 1;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--space-2xl) var(--space-lg) var(--space-3xl);
+}
+
+.legal-doc__title {
+  font-size: var(--text-display);
+  letter-spacing: var(--tracking-display);
+}
+
+.legal-doc__meta {
+  margin-top: var(--space-sm);
+  font-size: var(--text-caption);
+  color: var(--color-text-secondary);
+}
+
+.legal-section {
+  margin-top: var(--space-xl);
+}
+
+.legal-section h2 {
+  font-size: var(--text-subhead);
+  font-weight: var(--weight-semibold);
+}
+
+.legal-section p,
+.legal-section li {
+  margin-top: var(--space-sm);
+  font-size: var(--text-body);
+  line-height: 1.7;
+}
+
+.legal-section ul {
+  margin-top: var(--space-sm);
+  padding-left: var(--space-lg);
+  list-style: disc;
+}
+
+.legal-section li {
+  margin-top: var(--space-xs);
+}
+
+.legal-section a {
+  color: var(--color-text-primary);
+  text-decoration: underline;
+  text-decoration-color: var(--color-primary);
+  text-underline-offset: 3px;
+}
+
+.legal-section a:hover {
+  text-decoration-color: var(--color-text-primary);
+}
+
+/* Placeholder wajib isi: tetap terbaca, tapi jelas belum final. */
+.legal-todo {
+  font-family: var(--font-mono);
+  font-size: var(--text-mono);
+  border-bottom: 1px dashed var(--color-warning);
+}
+
+.legal-footer {
+  padding: var(--space-lg);
+  border-top: 1px solid var(--color-border);
+}
+
+.legal-footer__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-base);
+  max-width: 720px;
+  margin: 0 auto;
+  font-size: var(--text-caption);
+}
+
+.legal-footer__links a {
+  color: var(--color-text-secondary);
+}
+
+.legal-footer__links a:hover {
+  color: var(--color-text-primary);
+}
+
+@media (max-width: 640px) {
+  .legal-doc {
+    padding: var(--space-xl) var(--space-base) var(--space-2xl);
+  }
+
+  .legal-doc__title {
+    font-size: var(--text-heading);
+  }
+}

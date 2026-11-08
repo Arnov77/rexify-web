@@ -196,5 +196,8 @@ Dicek langsung dari isi `rex-bot-v2.zip` (tanpa mengubah apa pun di dalamnya):
 npx tsx .pgtest/routes.test.ts
 ```
 
-Suite: `auth` (13), `session` (18), `config` (31), `pm2` (33), `ws` (18), `routes` (30) = 143
-assertion, semuanya lulus.
+Suite: `auth` (13), `session` (20), `config` (36), `pm2` (36), `ws` (25), `routes` (30),
+`google` (18) = 178 assertion, semuanya lulus.
+
+`google` menutup alur OAuth tanpa memanggil Google sungguhan: `fetch` ke endpoint token dan
+userinfo di-mock, lalu callback -> tukar kode sekali-pakai -> `/api/me` diuji penuh.

@@ -103,6 +103,11 @@ export default function Register() {
         <p className="auth-footer">
           Sudah punya akun? <Link to="/login">Masuk</Link>
         </p>
+
+        <p className="auth-footer">
+          Dengan membuat akun, kamu setuju pada <Link to="/terms">Syarat dan Ketentuan</Link> dan{' '}
+          <Link to="/privacy">Kebijakan Privasi</Link>.
+        </p>
       </div>
     </div>
   );

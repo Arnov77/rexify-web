@@ -130,7 +130,6 @@ export default function Billing() {
       userEmail={user?.email ?? ''}
       plan={plan}
       trialEndsAt={user?.trial_ends_at ?? null}
-      planExpiresAt={user?.plan_expires_at ?? null}
       onLogout={logout}
     >
       {/* Section 1 — status plan saat ini */}

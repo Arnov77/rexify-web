@@ -224,7 +224,6 @@ export default function Dashboard() {
       userEmail={user?.email ?? ''}
       plan={user?.plan ?? 'free'}
       trialEndsAt={user?.trial_ends_at ?? null}
-      planExpiresAt={user?.plan_expires_at ?? null}
       sessions={sidebarSessions}
       onLogout={logout}
     >
@@ -297,8 +296,9 @@ export default function Dashboard() {
         description={
           <>
             Bot <strong>{deleteTarget?.label ?? deleteTarget?.id}</strong> akan dihentikan dan
-            dihapus. Kredensial WhatsApp di folder <span className="mono">sessions/</span> tetap
-            disimpan di server.
+            dihapus, termasuk setelan, log, dan kredensial WhatsApp-nya di folder{' '}
+            <span className="mono">sessions/</span>. Nomor itu perlu ditautkan ulang lewat QR atau
+            pairing code kalau kamu membuat bot baru.
           </>
         }
         confirmLabel="Hapus"

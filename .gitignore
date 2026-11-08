@@ -1,6 +1,7 @@
 # Dependency & hasil build
 node_modules/
 dist/
+*.tsbuildinfo
 
 # Konfigurasi lokal & rahasia
 .env
@@ -16,9 +17,6 @@ dist/
 # Codebase bot (template read-only) dan data runtime instance
 core/
 instances/
-
-# Arsip sumber
-*.zip
 
 # Arsip sumber
 *.zip

@@ -25,7 +25,6 @@ interface SidebarProps {
   userEmail: string;
   plan: string;
   trialEndsAt: string | null;
-  planExpiresAt: string | null;
   activeSession?: ActiveSessionInfo;
   // List bot yang tampil di sidebar selama berada di Dashboard.
   sessions?: Array<{ id: string; label: string | null; status: string }>;
@@ -63,7 +62,6 @@ export default function Sidebar({
   userEmail,
   plan,
   trialEndsAt,
-  planExpiresAt: _planExpiresAt,
   activeSession,
   sessions,
   onToggleCollapse,

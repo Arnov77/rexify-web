@@ -582,7 +582,6 @@ export default function SessionDetail() {
       userEmail={user?.email ?? ''}
       plan={user?.plan ?? 'free'}
       trialEndsAt={user?.trial_ends_at ?? null}
-      planExpiresAt={user?.plan_expires_at ?? null}
       activeSession={{
         id: sessionId,
         label: session?.label ?? null,

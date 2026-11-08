@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import Logo from '../components/Logo';
 import { ApiError, apiRequest, setToken } from '../lib/api';
@@ -11,12 +11,16 @@ export default function GoogleCallback() {
   const { refresh } = useAuth();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  // StrictMode menjalankan effect dua kali saat dev; kode sekali-pakai tidak boleh ditukar dua kali.
+  const exchanged = useRef<string | null>(null);
 
   useEffect(() => {
     if (!code) {
       setError('Login Google tidak selesai. Coba lagi dari halaman masuk.');
       return;
     }
+    if (exchanged.current === code) return;
+    exchanged.current = code;
 
     // Kode sekali-pakai langsung dibuang dari URL supaya tidak ikut tersimpan di history.
     window.history.replaceState(null, '', '/auth/google/callback');

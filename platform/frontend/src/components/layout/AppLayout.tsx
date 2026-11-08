@@ -10,7 +10,6 @@ interface AppLayoutProps {
   userEmail: string;
   plan: string;
   trialEndsAt: string | null;
-  planExpiresAt: string | null;
   onLogout: () => void;
   activeSession?: ActiveSessionInfo;
   // List bot untuk sidebar (hanya dipakai di Dashboard).
@@ -30,7 +29,6 @@ export default function AppLayout({
   userEmail,
   plan,
   trialEndsAt,
-  planExpiresAt,
   onLogout,
   activeSession,
   sessions,
@@ -63,7 +61,6 @@ export default function AppLayout({
         userEmail={userEmail}
         plan={plan}
         trialEndsAt={trialEndsAt}
-        planExpiresAt={planExpiresAt}
         activeSession={activeSession}
         sessions={sessions}
         onToggleCollapse={toggleSidebar}

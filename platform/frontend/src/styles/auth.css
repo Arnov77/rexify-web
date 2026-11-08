@@ -56,13 +56,14 @@
   color: var(--color-error);
 }
 
-/* Garis pemisah antara form email dan tombol Google. */
+/* Garis pemisah antara form email dan tombol Google. Teks pakai text-secondary:
+   text-muted (#55555f) cuma ~2.5:1 di dark, di bawah ambang 4.5:1. */
 .auth-divider {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
   font-size: var(--text-caption);
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
 }
 
 .auth-divider::before,
