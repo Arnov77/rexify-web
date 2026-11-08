@@ -1,0 +1,84 @@
+/* Halaman Akun: kartu bertumpuk satu kolom, lebar dibatasi supaya baris tidak melebar. */
+.account-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--grid-gap);
+  max-width: 720px;
+}
+
+.account-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.account-card__title {
+  font-size: var(--text-subhead);
+  font-weight: var(--weight-semibold);
+}
+
+.account-card__hint {
+  font-size: var(--text-body);
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+}
+
+.account-card__action {
+  align-self: flex-start;
+}
+
+.account-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.account-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.account-row:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.account-row dt {
+  font-size: var(--text-caption);
+  color: var(--color-text-secondary);
+}
+
+.account-row dd {
+  font-size: var(--text-body);
+  text-align: right;
+}
+
+.account-row__note {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--text-caption);
+  color: var(--color-text-secondary);
+}
+
+.account-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-base);
+}
+
+.account-form__error {
+  font-size: var(--text-caption);
+  color: var(--color-error);
+}
+
+.account-link {
+  color: var(--color-text-primary);
+  text-decoration: underline;
+  text-decoration-color: var(--color-primary);
+  text-underline-offset: 3px;
+}

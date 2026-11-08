@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { IconBilling, IconDashboard, IconLogout, IconMoon, IconSun } from '../icons';
+import { IconBilling, IconDashboard, IconLogout, IconMoon, IconSun, IconUser } from '../icons';
 import type { Theme } from '../../lib/useTheme';
 
 interface BottomNavProps {
@@ -31,6 +31,16 @@ export default function BottomNav({ theme, onToggleTheme, onLogout }: BottomNavP
       >
         <IconBilling size={22} />
         <span>Billing</span>
+      </NavLink>
+
+      <NavLink
+        to="/account"
+        className={({ isActive }) =>
+          isActive ? 'bottom-nav__item bottom-nav__item--active' : 'bottom-nav__item'
+        }
+      >
+        <IconUser size={22} />
+        <span>Akun</span>
       </NavLink>
 
       <button

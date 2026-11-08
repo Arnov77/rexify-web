@@ -2,6 +2,7 @@ import { timingSafeEqual } from 'node:crypto';
 import Fastify from 'fastify';
 import jwt from '@fastify/jwt';
 import websocket from '@fastify/websocket';
+import accountRoutes from './auth/account';
 import { authMiddleware } from './auth/middleware';
 import googleRoutes from './auth/google';
 import loginRoutes from './auth/login';
@@ -109,6 +110,7 @@ async function main(): Promise<void> {
     instance.addHook('onRequest', authMiddleware);
     instance.register(sessionRoutes);
     instance.register(configRoutes);
+    instance.register(accountRoutes);
 
     instance.get('/api/me', async (request) => ({
       user: { ...request.user, active: isAccessActive(request.user) },

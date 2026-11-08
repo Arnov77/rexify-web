@@ -29,8 +29,8 @@ export async function authMiddleware(
     return;
   }
 
-  const { rows } = await pool.query<UserRow>(
-    `SELECT id, email, password_hash, plan, trial_ends_at, plan_expires_at, email_verified, created_at, updated_at
+  const { rows } = await pool.query<UserRow & { google_id: string | null }>(
+    `SELECT id, email, password_hash, google_id, plan, trial_ends_at, plan_expires_at, email_verified, created_at, updated_at
      FROM users WHERE id = $1::uuid`,
     [payload.userId],
   );
@@ -51,6 +51,8 @@ export async function authMiddleware(
     trial_ends_at: user.trial_ends_at,
     plan_expires_at: user.plan_expires_at,
     email_verified: user.email_verified,
+    has_password: user.password_hash !== null,
+    has_google: user.google_id !== null,
   };
 
   // Endpoint auth (send-otp/verify-email/reset-password) dan /api/me tetap terbuka supaya

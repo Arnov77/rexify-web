@@ -8,6 +8,7 @@ import {
   IconLogout,
   IconMoon,
   IconSun,
+  IconUser,
 } from '../icons';
 import type { SessionTab } from '../../lib/types';
 import type { Theme } from '../../lib/useTheme';
@@ -109,6 +110,16 @@ export default function Sidebar({
         >
           <IconBilling />
           {!collapsed && <span className="nav-item__label">Billing</span>}
+        </NavLink>
+
+        <NavLink
+          to="/account"
+          className={({ isActive }) => (isActive ? 'nav-item nav-item--active' : 'nav-item')}
+          title={collapsed ? 'Akun' : undefined}
+          onClick={onNavigate}
+        >
+          <IconUser />
+          {!collapsed && <span className="nav-item__label">Akun</span>}
         </NavLink>
 
         {!collapsed && sessions && sessions.length > 0 && (

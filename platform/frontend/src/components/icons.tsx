@@ -260,6 +260,15 @@ export function IconLink(props: IconProps) {
   );
 }
 
+export function IconUser(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20a8 8 0 0 1 16 0" />
+    </Svg>
+  );
+}
+
 export function IconPersonPlus(props: IconProps) {
   return (
     <FilledSvg {...props}>

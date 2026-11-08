@@ -11,6 +11,10 @@ export interface AuthUser {
   trial_ends_at: Date | null;
   plan_expires_at: Date | null;
   email_verified: boolean;
+  // false untuk akun yang hanya masuk lewat Google (password_hash NULL).
+  has_password: boolean;
+  // true kalau akun tertaut ke akun Google.
+  has_google: boolean;
 }
 
 export interface UserRow {

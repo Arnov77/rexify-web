@@ -7,6 +7,9 @@ export interface ApiUser {
   email_verified?: boolean;
   created_at?: string;
   active?: boolean;
+  // Dari /api/me: apakah akun punya password sendiri dan/atau tertaut ke Google.
+  has_password?: boolean;
+  has_google?: boolean;
 }
 
 export interface AuthResponse {

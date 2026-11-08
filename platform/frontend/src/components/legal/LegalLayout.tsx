@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import Logo from '../Logo';
+import { useAuth } from '../../lib/auth';
 import { LEGAL_UPDATED_AT } from '../../lib/legal';
 import '../../styles/legal.css';
 
@@ -12,15 +13,22 @@ interface LegalLayoutProps {
 }
 
 export default function LegalLayout({ title, children, other }: LegalLayoutProps) {
+  const { user } = useAuth();
+  // Label harus sama dengan tujuan sebenarnya: user yang sudah login mendarat di dashboard,
+  // bukan di landing (Landing mengalihkan user login ke /dashboard).
+  const home = user
+    ? { to: '/dashboard', label: 'Kembali ke dashboard' }
+    : { to: '/', label: 'Kembali ke beranda' };
+
   return (
     <div className="legal-page">
       <header className="legal-header">
-        <Link className="legal-header__brand" to="/">
+        <Link className="legal-header__brand" to={home.to}>
           <Logo size={28} className="legal-header__logo" />
           <span>Rexify</span>
         </Link>
-        <Link className="legal-header__back" to="/">
-          Kembali ke beranda
+        <Link className="legal-header__back" to={home.to}>
+          {home.label}
         </Link>
       </header>
 
@@ -33,7 +41,11 @@ export default function LegalLayout({ title, children, other }: LegalLayoutProps
       <footer className="legal-footer">
         <nav className="legal-footer__links" aria-label="Dokumen lain">
           <Link to={other.to}>{other.label}</Link>
-          <Link to="/login">Masuk ke dashboard</Link>
+          {user ? (
+            <Link to="/dashboard">Buka dashboard</Link>
+          ) : (
+            <Link to="/login">Masuk ke dashboard</Link>
+          )}
         </nav>
       </footer>
     </div>
