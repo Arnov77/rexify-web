@@ -98,13 +98,6 @@
   text-decoration-color: var(--color-text-primary);
 }
 
-/* Placeholder wajib isi: tetap terbaca, tapi jelas belum final. */
-.legal-todo {
-  font-family: var(--font-mono);
-  font-size: var(--text-mono);
-  border-bottom: 1px dashed var(--color-warning);
-}
-
 .legal-footer {
   padding: var(--space-lg);
   border-top: 1px solid var(--color-border);

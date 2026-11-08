@@ -15,7 +15,7 @@ export default function Privacy() {
       <section className="legal-section">
         <h2>1. Ringkasan</h2>
         <p>
-          Rexify dijalankan oleh <span className="legal-todo">{LEGAL_ENTITY}</span>. Kami
+          Rexify dijalankan oleh {LEGAL_ENTITY}. Kami
           mengumpulkan data yang diperlukan untuk menjalankan bot WhatsApp milikmu: identitas akun,
           setelan bot, kredensial sesi WhatsApp, log aktivitas plugin, dan catatan pembayaran. Kami
           tidak menjual data pengguna.
@@ -129,9 +129,9 @@ export default function Privacy() {
         </p>
         <p>
           Untuk menghapus seluruh akun, kirim permintaan ke{' '}
-          <span className="legal-todo">{LEGAL_CONTACT_EMAIL}</span>. Setelah diverifikasi, data akun
-          dihapus dalam <span className="legal-todo">{LEGAL_ACCOUNT_RETENTION}</span>. Salinan di
-          cadangan berkala bisa masih ada sampai siklus cadangan berikutnya selesai.
+          <a href={`mailto:${LEGAL_CONTACT_EMAIL}`}>{LEGAL_CONTACT_EMAIL}</a>. Setelah
+          diverifikasi, data akun dihapus dalam {LEGAL_ACCOUNT_RETENTION}. Salinan di cadangan
+          berkala bisa masih ada sampai siklus cadangan berikutnya selesai.
         </p>
       </section>
 
@@ -157,8 +157,8 @@ export default function Privacy() {
         <p>
           Kamu berhak meminta salinan data akunmu, meminta perbaikan data yang keliru, meminta
           penghapusan, atau menanyakan cara data dipakai. Kirim permintaan ke{' '}
-          <span className="legal-todo">{LEGAL_CONTACT_EMAIL}</span>. Kami bisa meminta bukti
-          kepemilikan akun sebelum memproses permintaan.
+          <a href={`mailto:${LEGAL_CONTACT_EMAIL}`}>{LEGAL_CONTACT_EMAIL}</a>. Kami bisa meminta
+          bukti kepemilikan akun sebelum memproses permintaan.
         </p>
       </section>
 
@@ -179,7 +179,7 @@ export default function Privacy() {
         </p>
         <p>
           Pertanyaan tentang data pribadi bisa dikirim ke{' '}
-          <span className="legal-todo">{LEGAL_CONTACT_EMAIL}</span>.
+          <a href={`mailto:${LEGAL_CONTACT_EMAIL}`}>{LEGAL_CONTACT_EMAIL}</a>.
         </p>
       </section>
     </LegalLayout>

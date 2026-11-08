@@ -16,7 +16,7 @@ export default function Terms() {
       <section className="legal-section">
         <h2>1. Penerimaan ketentuan</h2>
         <p>
-          Rexify dijalankan oleh <span className="legal-todo">{LEGAL_ENTITY}</span> (selanjutnya
+          Rexify dijalankan oleh {LEGAL_ENTITY} (selanjutnya
           disebut &quot;kami&quot;). Dengan membuat akun, masuk lewat Google, atau memakai layanan,
           kamu menyetujui ketentuan ini beserta{' '}
           <Link to="/privacy">Kebijakan Privasi</Link>. Kalau kamu tidak setuju, jangan memakai
@@ -73,7 +73,7 @@ export default function Terms() {
           ditambahkan 30 hari, dihitung dari tanggal berakhir yang masih aktif bila ada.
         </p>
         <p>
-          Pengembalian dana: <span className="legal-todo">{LEGAL_REFUND}</span>
+          Pengembalian dana: {LEGAL_REFUND}
         </p>
       </section>
 
@@ -97,7 +97,7 @@ export default function Terms() {
         <h2>6. Penangguhan dan penghentian</h2>
         <p>
           Kamu bisa berhenti kapan saja: hapus bot dari dashboard, atau minta penghapusan akun
-          lewat <span className="legal-todo">{LEGAL_CONTACT_EMAIL}</span>.
+          lewat <a href={`mailto:${LEGAL_CONTACT_EMAIL}`}>{LEGAL_CONTACT_EMAIL}</a>.
         </p>
         <p>
           Kami bisa menangguhkan atau menutup akun yang melanggar ketentuan ini, dipakai untuk
@@ -133,9 +133,8 @@ export default function Terms() {
       <section className="legal-section">
         <h2>9. Hukum yang berlaku dan kontak</h2>
         <p>
-          Ketentuan ini tunduk pada hukum <span className="legal-todo">{LEGAL_JURISDICTION}</span>.
-          Pertanyaan tentang ketentuan ini bisa dikirim ke{' '}
-          <span className="legal-todo">{LEGAL_CONTACT_EMAIL}</span>.
+          Ketentuan ini tunduk pada hukum {LEGAL_JURISDICTION}. Pertanyaan tentang ketentuan ini
+          bisa dikirim ke <a href={`mailto:${LEGAL_CONTACT_EMAIL}`}>{LEGAL_CONTACT_EMAIL}</a>.
         </p>
       </section>
     </LegalLayout>
