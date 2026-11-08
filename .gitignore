@@ -20,6 +20,7 @@ instances/
 
 # Arsip sumber
 *.zip
+*.rar
 
 # Sertifikat yang dihasilkan runtime/tooling
 platform/ca.pem
