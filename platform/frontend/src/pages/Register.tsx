@@ -99,7 +99,7 @@ export default function Register() {
           </span>
         </a>
 
-        <p className="auth-note">Trial 7 hari aktif langsung, tanpa verifikasi email.</p>
+        <p className="auth-note">Trial 7 hari mulai dihitung sejak akun dibuat.</p>
         <p className="auth-footer">
           Sudah punya akun? <Link to="/login">Masuk</Link>
         </p>
