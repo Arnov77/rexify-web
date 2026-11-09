@@ -162,6 +162,26 @@
   gap: var(--space-sm);
 }
 
+/* Detail transaksi */
+.billing-detail {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-sm) var(--space-base);
+  margin: 0;
+  font-size: var(--text-body);
+}
+
+.billing-detail dt {
+  color: var(--color-text-secondary);
+}
+
+.billing-detail dd {
+  margin: 0;
+  color: var(--color-text-primary);
+  /* Order ID panjang: jangan sampai melebarkan dialog. */
+  overflow-wrap: anywhere;
+}
+
 /* Modal pembayaran */
 .billing-modal {
   position: relative;

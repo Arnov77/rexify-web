@@ -10,6 +10,14 @@ export type BillingPlan = keyof typeof BILLING_PLAN_INFO;
 
 export type BillingTransactionStatus = 'pending' | 'success' | 'failed' | 'cancelled' | 'expired';
 
+export const BILLING_STATUS_LABEL: Record<string, string> = {
+  pending: 'Menunggu',
+  success: 'Berhasil',
+  failed: 'Gagal',
+  cancelled: 'Dibatalkan',
+  expired: 'Kedaluwarsa',
+};
+
 export interface BillingTransaction {
   id: string;
   order_id: string;
@@ -17,6 +25,8 @@ export interface BillingTransaction {
   amount: number;
   status: BillingTransactionStatus;
   payment_type: string | null;
+  // ID transaksi dari Midtrans; null selama charge belum tercatat.
+  midtrans_transaction_id: string | null;
   // QR disimpan di DB supaya transaksi pending bisa dilanjutkan dari riwayat.
   qr_code_url: string | null;
   created_at: string;

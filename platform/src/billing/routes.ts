@@ -380,6 +380,8 @@ export default async function billingRoutes(app: FastifyInstance): Promise<void>
           amount: row.amount,
           status: row.status,
           payment_type: row.payment_type,
+          // Ditampilkan di dialog detail supaya user bisa cocokkan dengan dashboard Midtrans.
+          midtrans_transaction_id: row.midtrans_transaction_id,
           qr_code_url: row.qr_code_url,
           created_at: row.created_at,
         })),

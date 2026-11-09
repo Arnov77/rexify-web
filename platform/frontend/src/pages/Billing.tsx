@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import BillingModal from '../components/billing/BillingModal';
+import TransactionDetail from '../components/billing/TransactionDetail';
 import AppLayout from '../components/layout/AppLayout';
 import Button from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
@@ -8,6 +9,7 @@ import { ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import {
   BILLING_PLAN_INFO,
+  BILLING_STATUS_LABEL,
   cancelBilling,
   formatRupiah,
   getBillingHistory,
@@ -34,14 +36,6 @@ const dateFormat = new Intl.DateTimeFormat('id-ID', {
   year: 'numeric',
 });
 
-const STATUS_LABEL: Record<string, string> = {
-  pending: 'Menunggu',
-  success: 'Berhasil',
-  failed: 'Gagal',
-  cancelled: 'Dibatalkan',
-  expired: 'Kedaluwarsa',
-};
-
 function formatDate(value: string | null): string {
   if (!value) return '-';
   const date = new Date(value);
@@ -56,7 +50,7 @@ function daysUntil(value: string | null): number | null {
 }
 
 function billingBadge(status: string): { label: string; className: string } {
-  const label = STATUS_LABEL[status] ?? 'Menunggu';
+  const label = BILLING_STATUS_LABEL[status] ?? 'Menunggu';
 
   if (status === 'success') return { label, className: 'billing-badge billing-badge--success' };
   if (status === 'failed') return { label, className: 'billing-badge billing-badge--failed' };
@@ -78,6 +72,8 @@ export default function Billing() {
   // Transaksi pending yang dibuka ulang dari riwayat (pakai QR lama, tanpa charge baru).
   const [resumeTarget, setResumeTarget] = useState<BillingTransaction | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  // Transaksi yang sedang dibuka di dialog detail.
+  const [detailTarget, setDetailTarget] = useState<BillingTransaction | null>(null);
 
   const loadHistory = useCallback(async () => {
     setHistoryError(null);
@@ -271,27 +267,34 @@ export default function Billing() {
                         <span className={badge.className}>{badge.label}</span>
                       </td>
                       <td>
-                        {transaction.status === 'pending' ? (
-                          <div className="billing-table__actions">
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              onClick={() => handleResume(transaction)}
-                            >
-                              Lanjutkan
-                            </Button>
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              loading={cancellingId === transaction.order_id}
-                              onClick={() => void handleCancelHistory(transaction)}
-                            >
-                              Batalkan
-                            </Button>
-                          </div>
-                        ) : (
-                          <span className="caption">-</span>
-                        )}
+                        <div className="billing-table__actions">
+                          {transaction.status === 'pending' && (
+                            <>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => handleResume(transaction)}
+                              >
+                                Lanjutkan
+                              </Button>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                loading={cancellingId === transaction.order_id}
+                                onClick={() => void handleCancelHistory(transaction)}
+                              >
+                                Batalkan
+                              </Button>
+                            </>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setDetailTarget(transaction)}
+                          >
+                            Detail
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -331,6 +334,13 @@ export default function Billing() {
             void loadHistory();
           }}
           onPaid={() => void handlePaid()}
+        />
+      )}
+
+      {detailTarget && (
+        <TransactionDetail
+          transaction={detailTarget}
+          onClose={() => setDetailTarget(null)}
         />
       )}
     </AppLayout>
