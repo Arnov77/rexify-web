@@ -45,7 +45,7 @@ export async function generateConfig(sessionId: string): Promise<BotConfigFile> 
     thumbnailUrl: cs.thumbnailUrl || base.thumbnailUrl,
     audioUrl: cs.audioUrl || base.audioUrl,
     web: cs.web || base.web,
-    owner: [phone].filter(Boolean),
+    owner: [cs.owner_number || phone].filter(Boolean),
     nomor: phone,
     link: {
       group: cs.link_group || '',

@@ -136,6 +136,8 @@ export interface CustomSettings {
   // Identitas bot
   botname: string;
   ownername: string;
+  // Kosong = pakai nomor session. Diisi kalau bot dikontrol dari nomor lain.
+  owner_number: string;
   thumbnailUrl: string;
   audioUrl: string;
   web: string;

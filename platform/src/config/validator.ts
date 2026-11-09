@@ -19,6 +19,7 @@ const MAX_AI_SYSTEM_PROMPT_LENGTH = 12000;
 const OPTIONAL_TEXT_FIELDS = [
   'botname',
   'ownername',
+  'owner_number',
   'thumbnailUrl',
   'audioUrl',
   'web',
@@ -105,6 +106,16 @@ export function validateCustomSettings(input: unknown): Partial<CustomSettings> 
       throw new ValidationError(`${field} harus berupa teks`);
     }
     result[field] = value.trim();
+  }
+
+  // Nomor owner opsional: kosong = pakai nomor session. Disimpan sebagai digit saja karena
+  // core mencocokkan global.owner dengan nomor pengirim.
+  if (result.owner_number) {
+    const digits = result.owner_number.replace(/\D/g, '');
+    if (digits.length < 8 || digits.length > 15) {
+      throw new ValidationError('owner_number harus 8-15 digit');
+    }
+    result.owner_number = digits;
   }
 
   if (input.prefix !== undefined) {

@@ -807,6 +807,15 @@ export default function SessionDetail() {
                         maxLength={60}
                       />
                       <Input
+                        label="Nomor owner"
+                        placeholder="6281234567890"
+                        value={settings.owner_number}
+                        onChange={(event) => updateSetting('owner_number', event.target.value)}
+                        inputMode="numeric"
+                        maxLength={20}
+                        hint="Kosongkan untuk memakai nomor bot. Diisi kalau bot dikontrol dari nomor lain."
+                      />
+                      <Input
                         label="URL thumbnail"
                         placeholder="https://…/thumbnail.jpg"
                         value={settings.thumbnailUrl}
