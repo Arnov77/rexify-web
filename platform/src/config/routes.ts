@@ -120,6 +120,12 @@ export default async function configRoutes(app: FastifyInstance): Promise<void> 
       for (const field of LOCKED_FREE_FIELDS) delete cs[field];
     }
 
+    // Fitur AI tidak tersedia untuk plan free; plugin-nya juga dimatikan di generator,
+    // jadi setelannya tidak perlu disimpan.
+    if (request.user.plan === 'free' && body.aiSettings !== undefined) {
+      delete body.aiSettings;
+    }
+
     // Saring di server (anti-bypass request manual): command owner tidak boleh dimatikan dan
     // plan hanya boleh menyentuh katalognya. Path di luar katalog dibiarkan apa adanya.
     if (Array.isArray(body.commandsDisabled)) {
@@ -127,7 +133,9 @@ export default async function configRoutes(app: FastifyInstance): Promise<void> 
       body.commandsDisabled = body.commandsDisabled.filter((file) => {
         const normalized = String(file).replace(/\\/g, '/');
         const entry = findCommandEntry(normalized);
-        if (!entry) return true;
+        // Path di luar katalog ditolak (fail closed): kalau diloloskan, plugin yang belum
+        // terdaftar bisa dimatikan di luar aturan plan.
+        if (!entry) return false;
         return !entry.locked && allowed.has(entry.file);
       });
     }

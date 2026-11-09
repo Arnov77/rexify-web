@@ -708,7 +708,19 @@ export default function SessionDetail() {
                   <p className="caption">Karakter bot saat membalas chat pribadi dan grup.</p>
                 </div>
                 <div className="card">
-                  <AiSettingsEditor sessionId={sessionId} config={config} onChange={setConfig} />
+                  {user?.plan === 'free' ? (
+                    <div className="ai-locked">
+                      <p className="caption">
+                        Fitur AI hanya tersedia di plan Pro dan Enterprise. Bot trial tetap bisa
+                        dipakai untuk command lain.
+                      </p>
+                      <Link className="btn btn--secondary btn--sm" to="/billing">
+                        <span>Lihat paket</span>
+                      </Link>
+                    </div>
+                  ) : (
+                    <AiSettingsEditor sessionId={sessionId} config={config} onChange={setConfig} />
+                  )}
                 </div>
               </section>
             </div>

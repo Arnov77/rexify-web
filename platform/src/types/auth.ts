@@ -2,6 +2,9 @@ export interface JWTPayload {
   userId: string;
   email: string;
   plan: string;
+  // Versi token saat diterbitkan; harus sama dengan users.token_version.
+  // Token lama tanpa `ver` dianggap versi 0.
+  ver?: number;
 }
 
 export interface AuthUser {
@@ -26,6 +29,8 @@ export interface UserRow {
   trial_ends_at: Date | null;
   plan_expires_at: Date | null;
   email_verified: boolean;
+  // Dinaikkan saat password diganti/di-reset; token dengan `ver` lama jadi tidak berlaku.
+  token_version: number;
   created_at: Date;
   updated_at: Date;
 }

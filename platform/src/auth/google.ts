@@ -4,6 +4,7 @@ import { PLAN_LIMITS } from '../config/plans';
 import { pool } from '../db';
 import type { UserRow } from '../types/auth';
 import { consumeExchangeCode, issueExchangeCode } from './exchange-code';
+import { JWT_EXPIRES_IN } from './token';
 
 const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
@@ -12,7 +13,7 @@ const USERINFO_URL = 'https://openidconnect.googleapis.com/v1/userinfo';
 const STATE_COOKIE = 'rexify_google_state';
 const STATE_TTL_SECONDS = 600;
 const USER_COLUMNS =
-  'id, email, password_hash, plan, trial_ends_at, plan_expires_at, email_verified, created_at, updated_at';
+  'id, email, password_hash, plan, trial_ends_at, plan_expires_at, email_verified, token_version, created_at, updated_at';
 
 interface CallbackQuery {
   code?: string;
@@ -43,6 +44,11 @@ function isSecure(request: FastifyRequest): boolean {
 function redirectUri(request: FastifyRequest): string {
   const configured = process.env.GOOGLE_REDIRECT_URI;
   if (configured) return configured;
+
+  // Di production nilai ini tidak boleh diturunkan dari header Host (bisa dipalsukan klien).
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('GOOGLE_REDIRECT_URI wajib di-set di production');
+  }
 
   const proto = String(request.headers['x-forwarded-proto'] ?? request.protocol);
   const host = String(request.headers['x-forwarded-host'] ?? request.headers.host ?? '');
@@ -147,10 +153,20 @@ export default async function googleRoutes(app: FastifyInstance): Promise<void> 
       });
     }
 
+    let redirect: string;
+    try {
+      redirect = redirectUri(request);
+    } catch {
+      return reply.code(503).send({
+        error: 'GOOGLE_REDIRECT_NOT_CONFIGURED',
+        message: 'GOOGLE_REDIRECT_URI belum di-set di server',
+      });
+    }
+
     const state = randomBytes(16).toString('hex');
     const url = new URL(AUTH_URL);
     url.searchParams.set('client_id', clientId());
-    url.searchParams.set('redirect_uri', redirectUri(request));
+    url.searchParams.set('redirect_uri', redirect);
     url.searchParams.set('response_type', 'code');
     url.searchParams.set('scope', 'openid email profile');
     url.searchParams.set('state', state);
@@ -185,8 +201,8 @@ export default async function googleRoutes(app: FastifyInstance): Promise<void> 
       );
 
       const token = app.jwt.sign(
-        { userId: user.id, email: user.email, plan: user.plan },
-        { expiresIn: '30d' },
+        { userId: user.id, email: user.email, plan: user.plan, ver: user.token_version },
+        { expiresIn: JWT_EXPIRES_IN },
       );
 
       // Yang dibawa ke URL hanya kode sekali-pakai, bukan token: aman walau access log

@@ -41,7 +41,7 @@ export async function authMiddleware(
   }
 
   const { rows } = await pool.query<UserRow & { google_id: string | null }>(
-    `SELECT id, email, password_hash, google_id, plan, trial_ends_at, plan_expires_at, email_verified, created_at, updated_at
+    `SELECT id, email, password_hash, google_id, plan, trial_ends_at, plan_expires_at, email_verified, token_version, created_at, updated_at
      FROM users WHERE id = $1::uuid`,
     [payload.userId],
   );
@@ -51,6 +51,15 @@ export async function authMiddleware(
     await reply.code(401).send({
       error: 'UNAUTHORIZED',
       message: 'User tidak ditemukan',
+    });
+    return;
+  }
+
+  // Token yang diterbitkan sebelum ganti/reset password langsung ditolak.
+  if ((payload.ver ?? 0) !== user.token_version) {
+    await reply.code(401).send({
+      error: 'UNAUTHORIZED',
+      message: 'Sesi sudah tidak berlaku, silakan masuk ulang',
     });
     return;
   }

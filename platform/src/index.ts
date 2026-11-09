@@ -46,7 +46,8 @@ async function main(): Promise<void> {
 
     const statusCode = error.statusCode ?? 500;
     if (statusCode < 500) {
-      return reply.code(statusCode).send({ error: 'BAD_REQUEST', message: error.message });
+      // Pesan internal Fastify (detail parsing body, dsb) tidak dikirim ke client.
+      return reply.code(statusCode).send({ error: 'BAD_REQUEST', message: 'Permintaan tidak valid' });
     }
 
     request.log.error(error);

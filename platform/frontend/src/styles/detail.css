@@ -146,6 +146,14 @@
   margin-top: var(--space-md);
 }
 
+/* Tab AI untuk plan free: fitur terkunci, arahkan ke halaman paket */
+.ai-locked {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-base);
+}
+
 /* Input password + tombol lihat/sembunyikan */
 .secret-input {
   display: flex;

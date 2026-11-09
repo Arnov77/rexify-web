@@ -3,12 +3,15 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { pool } from '../db';
 import { sendOtpEmail } from '../lib/mailer';
 import { generateOtp, OTP_EXPIRES_MINUTES, OTP_RESEND_SECONDS } from '../lib/otp';
+import { isUuid } from '../session/store';
 import type { JWTPayload, UserRow } from '../types/auth';
 import { hashPassword } from './password';
 
 const OTP_HASH_ROUNDS = 10;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
+// bcrypt memotong input di 72 byte; batasi supaya tidak ada karakter yang diam-diam dibuang.
+const MAX_PASSWORD_LENGTH = 72;
 const OTP_RE = /^\d{6}$/;
 const MAX_OTP_ATTEMPTS = 5;
 
@@ -85,7 +88,7 @@ async function currentUser(
     return null;
   }
 
-  if (typeof payload.userId !== 'string') return null;
+  if (typeof payload.userId !== 'string' || !isUuid(payload.userId)) return null;
   const user = await findById(payload.userId);
   return user ? { payload, user } : null;
 }
@@ -293,6 +296,13 @@ export default async function verifyRoutes(app: FastifyInstance): Promise<void> 
       });
     }
 
+    if (newPassword.length > MAX_PASSWORD_LENGTH) {
+      return reply.code(400).send({
+        error: 'INVALID_PASSWORD',
+        message: `Password maksimal ${MAX_PASSWORD_LENGTH} karakter`,
+      });
+    }
+
     if (!OTP_RE.test(otp)) {
       return reply.code(400).send({ error: 'INVALID_OTP', message: 'Kode harus 6 digit angka' });
     }
@@ -326,6 +336,7 @@ export default async function verifyRoutes(app: FastifyInstance): Promise<void> 
        SET password_hash = $2,
            otp_attempts = 0,
            otp_locked_until = NULL,
+           token_version = token_version + 1,
            updated_at = now()
        WHERE id = $1::uuid`,
       [user.id, passwordHash],

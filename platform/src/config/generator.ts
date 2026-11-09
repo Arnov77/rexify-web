@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { mkdir, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
+import { forcedDisabledFilesForPlan } from './access';
 import { pool } from '../db';
 import { instanceConfigPath } from '../paths';
 import type { BotConfigFile } from '../types/config';
@@ -88,7 +89,11 @@ export async function generateConfig(sessionId: string): Promise<BotConfigFile> 
     // Dibaca core sebagai global.ai; auto-ai.js mengirimnya ke API tiap balasan.
     ai: { ...base.ai, ...config.aiSettings },
     // Dibaca core/handler.js: plugin dengan path ini dilewati (termasuk plugin.before).
-    commands_disabled: config.commandsDisabled,
+    // Fitur di luar plan (mis. AI untuk free) selalu ikut dimatikan di sini, bukan hanya
+    // dikunci di dashboard, supaya bot benar-benar tidak menjalankannya.
+    commands_disabled: [
+      ...new Set([...config.commandsDisabled, ...forcedDisabledFilesForPlan(plan)]),
+    ],
   };
 
   const target = instanceConfigPath(sessionId);

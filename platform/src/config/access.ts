@@ -1,6 +1,6 @@
 import type { CommandCatalog, CommandEntry } from '../types/config';
 import { getCommandCatalog } from './catalog';
-import { commandAccessFor } from './plans';
+import { commandAccessFor, forcedDisabledCategoriesFor } from './plans';
 
 // Entry katalog boleh dipakai plan ini? Plugin `locked` (owner/rowner) dikunci flag sendiri.
 export function isEntryAvailableForPlan(plan: string, entry: CommandEntry): boolean {
@@ -30,4 +30,15 @@ export function allowedFileSetForPlan(plan: string): Set<string> {
   );
   perPlan.set(plan, files);
   return files;
+}
+
+// File yang wajib dimatikan untuk plan ini walau user tidak mematikannya. Dipakai
+// generator supaya fitur di luar plan benar-benar tidak jalan di bot.
+export function forcedDisabledFilesForPlan(plan: string): string[] {
+  const categories = forcedDisabledCategoriesFor(plan);
+  if (categories.length === 0) return [];
+
+  return getCommandCatalog()
+    .commands.filter((entry) => categories.includes(entry.category))
+    .map((entry) => entry.file);
 }

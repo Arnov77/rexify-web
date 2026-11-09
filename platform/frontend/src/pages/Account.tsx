@@ -5,7 +5,7 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import { useToast } from '../components/ui/Toast';
 import { changePassword } from '../lib/account';
-import { ApiError } from '../lib/api';
+import { ApiError, setToken } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { planLabel } from '../lib/billing';
 import { LEGAL_CONTACT_EMAIL, LEGAL_ACCOUNT_RETENTION } from '../lib/legal';
@@ -52,6 +52,10 @@ export default function Account() {
     event.preventDefault();
     setFormError(null);
 
+    if (!currentPassword) {
+      setFormError('Password saat ini wajib diisi');
+      return;
+    }
     if (newPassword.length < MIN_PASSWORD_LENGTH) {
       setFormError(`Password baru minimal ${MIN_PASSWORD_LENGTH} karakter`);
       return;
@@ -60,23 +64,16 @@ export default function Account() {
       setFormError('Ulangi password baru dengan isian yang sama');
       return;
     }
-    if (hasPassword && !currentPassword) {
-      setFormError('Password saat ini wajib diisi');
-      return;
-    }
 
     setSaving(true);
     try {
-      await changePassword({
-        currentPassword: hasPassword ? currentPassword : undefined,
-        newPassword,
-      });
+      // Server mencabut token lama saat password berubah; simpan token penggantinya.
+      setToken(await changePassword({ currentPassword, newPassword }));
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      // Untuk akun Google-only, has_password berubah jadi true setelah ini.
       await refresh();
-      showToast(hasPassword ? 'Password diperbarui' : 'Password berhasil dibuat', 'success');
+      showToast('Password diperbarui', 'success');
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : 'Gagal menyimpan password');
     } finally {
@@ -126,51 +123,57 @@ export default function Account() {
         </section>
 
         <section className="card account-card">
-          <h2 className="account-card__title">
-            {hasPassword ? 'Ganti password' : 'Buat password'}
-          </h2>
-          <p className="account-card__hint">
-            {hasPassword
-              ? 'Dipakai untuk masuk tanpa lewat Google. Minimal 8 karakter.'
-              : 'Akun ini masuk lewat Google dan belum punya password. Buat sekarang supaya bisa masuk tanpa akun Google.'}
-          </p>
-
-          <form className="account-form" onSubmit={handleSubmit} noValidate>
-            {hasPassword && (
-              <Input
-                label="Password saat ini"
-                type="password"
-                autoComplete="current-password"
-                value={currentPassword}
-                onChange={(event) => setCurrentPassword(event.target.value)}
-              />
-            )}
-            <Input
-              label="Password baru"
-              type="password"
-              autoComplete="new-password"
-              hint="Minimal 8 karakter"
-              value={newPassword}
-              onChange={(event) => setNewPassword(event.target.value)}
-            />
-            <Input
-              label="Ulangi password baru"
-              type="password"
-              autoComplete="new-password"
-              value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
-            />
-
-            {formError && (
-              <p className="account-form__error" role="alert">
-                {formError}
+          <h2 className="account-card__title">Ganti password</h2>
+          {hasPassword ? (
+            <>
+              <p className="account-card__hint">
+                Dipakai untuk masuk tanpa lewat Google. Minimal 8 karakter.
               </p>
-            )}
 
-            <Button type="submit" loading={saving}>
-              {hasPassword ? 'Simpan password' : 'Buat password'}
-            </Button>
-          </form>
+              <form className="account-form" onSubmit={handleSubmit} noValidate>
+                <Input
+                  label="Password saat ini"
+                  type="password"
+                  autoComplete="current-password"
+                  value={currentPassword}
+                  onChange={(event) => setCurrentPassword(event.target.value)}
+                />
+                <Input
+                  label="Password baru"
+                  type="password"
+                  autoComplete="new-password"
+                  hint="Minimal 8 karakter"
+                  value={newPassword}
+                  onChange={(event) => setNewPassword(event.target.value)}
+                />
+                <Input
+                  label="Ulangi password baru"
+                  type="password"
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                />
+
+                {formError && (
+                  <p className="account-form__error" role="alert">
+                    {formError}
+                  </p>
+                )}
+
+                <Button type="submit" loading={saving}>
+                  Simpan password
+                </Button>
+              </form>
+            </>
+          ) : (
+            <p className="account-card__hint">
+              Akun ini masuk lewat Google dan belum punya password. Buat password lewat{' '}
+              <Link className="account-link" to="/forgot-password">
+                Lupa password
+              </Link>{' '}
+              (verifikasi email), lalu kamu bisa masuk tanpa akun Google.
+            </p>
+          )}
         </section>
 
         <section className="card account-card">

@@ -3,6 +3,7 @@ import { isAccessActive } from '../config/plans';
 import { pool } from '../db';
 import type { UserRow } from '../types/auth';
 import { verifyPassword } from './password';
+import { JWT_EXPIRES_IN } from './token';
 
 // Hash dummy: compare tetap jalan walau email tidak ada, supaya timing tidak membocorkan akun.
 const DUMMY_HASH = '$2b$12$C6UzMDM.H6dfI/f/IKcEe.Mb7lVdFqO7xGZ8m0MStOQ2X6R5cM4Uu';
@@ -30,7 +31,7 @@ export default async function loginRoutes(app: FastifyInstance): Promise<void> {
     }
 
     const { rows } = await pool.query<UserRow>(
-      `SELECT id, email, password_hash, plan, trial_ends_at, plan_expires_at, email_verified, created_at, updated_at
+      `SELECT id, email, password_hash, plan, trial_ends_at, plan_expires_at, email_verified, token_version, created_at, updated_at
        FROM users WHERE email = $1`,
       [email],
     );
@@ -55,8 +56,8 @@ export default async function loginRoutes(app: FastifyInstance): Promise<void> {
     }
 
     const token = app.jwt.sign(
-      { userId: user.id, email: user.email, plan: user.plan },
-      { expiresIn: '30d' },
+      { userId: user.id, email: user.email, plan: user.plan, ver: user.token_version },
+      { expiresIn: JWT_EXPIRES_IN },
     );
 
     return reply.code(200).send({

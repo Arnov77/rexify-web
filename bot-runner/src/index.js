@@ -5,7 +5,7 @@ import path from 'node:path'
 import { promisify } from 'node:util'
 import Fastify from 'fastify'
 import websocket from '@fastify/websocket'
-import { authMiddleware } from './auth.js'
+import { authMiddleware, safeEqual } from './auth.js'
 import { watchSession } from './file-watcher.js'
 import { watchSessionLogs } from './logs.js'
 import {
@@ -325,7 +325,7 @@ app.get('/stream/:sessionId', { websocket: true }, (connection, request) => {
     const socket = connection?.socket ?? connection
     const secret = String(request.query?.secret ?? '')
 
-    if (!SECRET || secret !== SECRET) {
+    if (!SECRET || !safeEqual(secret, SECRET)) {
         socket.close(1008, 'UNAUTHORIZED')
         return
     }
@@ -383,7 +383,7 @@ app.get('/logs/:sessionId', { websocket: true }, (connection, request) => {
     const socket = connection?.socket ?? connection
     const secret = String(request.query?.secret ?? '')
 
-    if (!SECRET || secret !== SECRET) {
+    if (!SECRET || !safeEqual(secret, SECRET)) {
         socket.close(1008, 'UNAUTHORIZED')
         return
     }

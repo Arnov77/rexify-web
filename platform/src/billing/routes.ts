@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { authMiddleware } from '../auth/middleware';
 import { pool } from '../db';
@@ -47,8 +48,9 @@ interface UserPlanRow {
   plan_expires_at: Date | null;
 }
 
-function orderIdFor(userId: string): string {
-  return `rexify-${userId.slice(0, 8)}-${Date.now()}`;
+function orderIdFor(): string {
+  // Order ID tidak boleh membocorkan user/waktu: nilainya dipakai di URL status & cancel.
+  return `rexify-${randomUUID()}`;
 }
 
 function asString(value: unknown): string {
@@ -174,8 +176,8 @@ export default async function billingRoutes(app: FastifyInstance): Promise<void>
     const paymentType = asString(body.payment_type) || null;
     const fraudStatus = asString(body.fraud_status);
 
-    const { rows } = await pool.query<{ plan: string }>(
-      'SELECT plan FROM transactions WHERE order_id = $1',
+    const { rows } = await pool.query<{ plan: string; amount: number }>(
+      'SELECT plan, amount FROM transactions WHERE order_id = $1',
       [orderId],
     );
     const transaction = rows[0];
@@ -183,6 +185,16 @@ export default async function billingRoutes(app: FastifyInstance): Promise<void>
     if (!transaction) {
       // Order asing: tetap 200 supaya Midtrans berhenti retry.
       return reply.code(200).send({ received: true, ignored: true });
+    }
+
+    // Signature membuktikan notifikasi berasal dari Midtrans, tapi nominalnya tetap harus
+    // sama dengan yang tercatat supaya plan tidak aktif dengan harga lain.
+    if (Number(grossAmount) !== transaction.amount) {
+      request.log.warn(
+        { order_id: orderId, gross_amount: grossAmount, amount: transaction.amount },
+        '[billing] gross_amount tidak cocok dengan transaksi',
+      );
+      return reply.code(403).send({ error: 'AMOUNT_MISMATCH', message: 'Nominal tidak cocok' });
     }
 
     if (isBillingPlan(transaction.plan) && isPaidStatus(transactionStatus, fraudStatus)) {
@@ -244,7 +256,7 @@ export default async function billingRoutes(app: FastifyInstance): Promise<void>
       }
 
       const amount = BILLING_PLANS[plan].amount;
-      const orderId = orderIdFor(request.user.id);
+      const orderId = orderIdFor();
 
       let charge;
       try {

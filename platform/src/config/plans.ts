@@ -74,3 +74,16 @@ export const PLAN_COMMANDS: Record<PlanName, CommandAccess> = {
 export function commandAccessFor(plan: string): CommandAccess {
   return PLAN_COMMANDS[plan as PlanName] ?? PLAN_COMMANDS.free;
 }
+
+// Kategori yang selalu dimatikan untuk plan tertentu, apa pun setelan user.
+// `keepCategories` hanya mengunci baris di dashboard; core tetap butuh file-nya masuk
+// `commands_disabled`, kalau tidak plugin-nya jalan untuk plan yang tidak berhak.
+export const PLAN_FORCED_DISABLED_CATEGORIES: Record<PlanName, string[]> = {
+  free: ['ai'],
+  pro: [],
+  enterprise: [],
+};
+
+export function forcedDisabledCategoriesFor(plan: string): string[] {
+  return PLAN_FORCED_DISABLED_CATEGORIES[plan as PlanName] ?? PLAN_FORCED_DISABLED_CATEGORIES.free;
+}

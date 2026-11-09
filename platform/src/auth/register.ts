@@ -3,9 +3,12 @@ import { pool } from '../db';
 import { PLAN_LIMITS } from '../config/plans';
 import type { UserRow } from '../types/auth';
 import { hashPassword } from './password';
+import { JWT_EXPIRES_IN } from './token';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
+// bcrypt memotong input di 72 byte; batasi supaya tidak ada karakter yang diam-diam dibuang.
+const MAX_PASSWORD_LENGTH = 72;
 
 // Override rate limit global (100/menit): cegah pembuatan akun massal.
 const RATE_LIMIT_AUTH = { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } };
@@ -35,13 +38,20 @@ export default async function registerRoutes(app: FastifyInstance): Promise<void
       });
     }
 
+    if (password.length > MAX_PASSWORD_LENGTH) {
+      return reply.code(400).send({
+        error: 'INVALID_PASSWORD',
+        message: `Password maksimal ${MAX_PASSWORD_LENGTH} karakter`,
+      });
+    }
+
     const passwordHash = await hashPassword(password);
 
     try {
       const { rows } = await pool.query<UserRow>(
         `INSERT INTO users (email, password_hash, plan, trial_ends_at)
          VALUES ($1, $2, 'free', now() + make_interval(days => $3))
-         RETURNING id, email, password_hash, plan, trial_ends_at, plan_expires_at, email_verified, created_at, updated_at`,
+         RETURNING id, email, password_hash, plan, trial_ends_at, plan_expires_at, email_verified, token_version, created_at, updated_at`,
         [email, passwordHash, PLAN_LIMITS.free.trial_days],
       );
 
@@ -51,8 +61,8 @@ export default async function registerRoutes(app: FastifyInstance): Promise<void
       }
 
       const token = app.jwt.sign(
-        { userId: user.id, email: user.email, plan: user.plan },
-        { expiresIn: '30d' },
+        { userId: user.id, email: user.email, plan: user.plan, ver: user.token_version },
+        { expiresIn: JWT_EXPIRES_IN },
       );
 
       return reply.code(201).send({
