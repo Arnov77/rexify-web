@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { pool } from '../db';
 import type {
+  AiSettings,
   AutoReplyRule,
   BotConfig,
   BotConfigRow,
@@ -9,6 +10,7 @@ import type {
   WelcomeMsg,
 } from '../types/config';
 import {
+  DEFAULT_AI_SETTINGS,
   DEFAULT_AUTO_REPLY,
   DEFAULT_COMMANDS_DISABLED,
   DEFAULT_CUSTOM_SETTINGS,
@@ -17,6 +19,7 @@ import {
 } from './defaults';
 import {
   ValidationError,
+  validateAiSettings,
   validateAutoReply,
   validateCommandsDisabled,
   validateCustomSettings,
@@ -25,7 +28,7 @@ import {
 } from './validator';
 
 const COLUMNS =
-  'id, session_id, auto_reply, welcome_msg, plugins_enabled, commands_disabled, custom_settings, updated_at';
+  'id, session_id, auto_reply, welcome_msg, plugins_enabled, commands_disabled, custom_settings, ai_settings, updated_at';
 
 const cache = new Map<string, BotConfig>();
 
@@ -35,6 +38,7 @@ export interface ConfigPatch {
   pluginsEnabled?: unknown;
   commandsDisabled?: unknown;
   customSettings?: unknown;
+  aiSettings?: unknown;
 }
 
 function mapRow(row: BotConfigRow): BotConfig {
@@ -52,6 +56,8 @@ function mapRow(row: BotConfigRow): BotConfig {
       antilink_whitelist_number: settings.antilink_whitelist_number ?? [],
       premium_packages: settings.premium_packages ?? [],
     },
+    // Row lama (ai_settings '{}') tetap aman: semua field jatuh ke preset default.
+    aiSettings: { ...DEFAULT_AI_SETTINGS, ...(row.ai_settings ?? {}) },
     updatedAt: row.updated_at,
   };
 }
@@ -84,6 +90,7 @@ export function defaultConfigFor(sessionId: string): BotConfig {
     pluginsEnabled: { ...DEFAULT_PLUGINS_ENABLED },
     commandsDisabled: [...DEFAULT_COMMANDS_DISABLED],
     customSettings: { ...DEFAULT_CUSTOM_SETTINGS },
+    aiSettings: { ...DEFAULT_AI_SETTINGS },
     updatedAt: new Date(),
   };
 }
@@ -152,6 +159,11 @@ export async function updateConfig(sessionId: string, patch: ConfigPatch): Promi
       ? current.customSettings
       : { ...current.customSettings, ...validateCustomSettings(patch.customSettings) };
 
+  const aiSettings: AiSettings =
+    patch.aiSettings === undefined
+      ? current.aiSettings
+      : { ...current.aiSettings, ...validateAiSettings(patch.aiSettings) };
+
   const { rows } = await pool.query<BotConfigRow>(
     `UPDATE bot_configs
      SET auto_reply = $2::jsonb,
@@ -159,6 +171,7 @@ export async function updateConfig(sessionId: string, patch: ConfigPatch): Promi
          plugins_enabled = $4::jsonb,
          commands_disabled = $5::jsonb,
          custom_settings = $6::jsonb,
+         ai_settings = $7::jsonb,
          updated_at = now()
      WHERE session_id = $1::uuid
      RETURNING ${COLUMNS}`,
@@ -169,6 +182,7 @@ export async function updateConfig(sessionId: string, patch: ConfigPatch): Promi
       JSON.stringify(pluginsEnabled),
       JSON.stringify(commandsDisabled),
       JSON.stringify(customSettings),
+      JSON.stringify(aiSettings),
     ],
   );
 

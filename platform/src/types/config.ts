@@ -6,6 +6,17 @@ export interface AutoReplyRule {
   enabled: boolean;
 }
 
+// Konfigurasi auto-AI: dikirim ke POST /api/ai/heru-ai/ tiap balasan.
+// system_prompt (kalau diisi) menimpa seluruh field lain di sisi API.
+export interface AiSettings {
+  name: string;
+  persona: string;
+  tone: string;
+  defense_rules: string;
+  custom_instructions: string;
+  system_prompt: string;
+}
+
 export interface WelcomeMsg {
   enabled: boolean;
   message: string;
@@ -86,6 +97,7 @@ export interface BotConfig {
   pluginsEnabled: PluginsEnabled;
   commandsDisabled: string[];
   customSettings: CustomSettings;
+  aiSettings: AiSettings;
   updatedAt: Date;
 }
 
@@ -97,6 +109,7 @@ export interface BotConfigRow {
   plugins_enabled: Partial<PluginsEnabled> | null;
   commands_disabled: string[] | null;
   custom_settings: Partial<CustomSettings> | null;
+  ai_settings: Partial<AiSettings> | null;
   updated_at: Date;
 }
 
@@ -132,4 +145,6 @@ export interface BotConfigFile {
   auto_reply: AutoReplyRule[];
   welcome_msg: WelcomeMsg;
   commands_disabled: string[];
+  // Dibaca core sebagai global.ai (lihat core/lib/global.js dan plugins/ai/auto-ai.js).
+  ai: AiSettings;
 }

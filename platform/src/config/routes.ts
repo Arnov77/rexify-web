@@ -140,6 +140,7 @@ export default async function configRoutes(app: FastifyInstance): Promise<void> 
       pluginsEnabled: body.pluginsEnabled,
       commandsDisabled: body.commandsDisabled,
       customSettings: body.customSettings,
+      aiSettings: body.aiSettings,
     });
 
     // Audit hanya mencatat yang benar-benar berubah, bukan setiap PATCH.

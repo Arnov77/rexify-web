@@ -97,6 +97,55 @@
   border-top: 1px solid var(--color-border-subtle);
 }
 
+/* Tab AI: label + dropdown preset sebaris, textarea di bawahnya */
+.ai-field__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.ai-preset {
+  height: 26px;
+  max-width: 55%;
+  padding: 0 var(--space-sm);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  color: var(--color-text-secondary);
+  font-size: var(--text-caption);
+  transition: border-color var(--duration-fast) var(--ease);
+}
+
+.ai-preset:hover {
+  border-color: var(--color-primary);
+}
+
+.ai-preset:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.ai-advanced {
+  padding: var(--space-md);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.ai-advanced__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  font-size: var(--text-body);
+  font-weight: var(--weight-medium);
+}
+
+.ai-advanced__body {
+  margin-top: var(--space-md);
+}
+
 /* Input password + tombol lihat/sembunyikan */
 .secret-input {
   display: flex;

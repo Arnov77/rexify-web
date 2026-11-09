@@ -85,6 +85,8 @@ export async function generateConfig(sessionId: string): Promise<BotConfigFile> 
     },
     auto_reply: config.autoReply,
     welcome_msg: config.welcomeMsg,
+    // Dibaca core sebagai global.ai; auto-ai.js mengirimnya ke API tiap balasan.
+    ai: { ...base.ai, ...config.aiSettings },
     // Dibaca core/handler.js: plugin dengan path ini dilewati (termasuk plugin.before).
     commands_disabled: config.commandsDisabled,
   };

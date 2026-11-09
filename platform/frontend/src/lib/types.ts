@@ -26,7 +26,7 @@ export type SessionStatus = 'connecting' | 'qr_pending' | 'active' | 'disconnect
 
 export type ConnectMode = 'qr' | 'pairing';
 
-export type SessionTab = 'autoReply' | 'plugin' | 'settings';
+export type SessionTab = 'ai' | 'plugin' | 'settings';
 
 export interface Session {
   id: string;
@@ -51,6 +51,17 @@ export interface AutoReplyRule {
   response: string;
   match: MatchType;
   enabled: boolean;
+}
+
+// Konfigurasi auto-AI: dikirim ke POST /api/ai/heru-ai/ tiap balasan.
+// system_prompt (kalau diisi) menimpa seluruh field lain di sisi API.
+export interface AiSettings {
+  name: string;
+  persona: string;
+  tone: string;
+  defense_rules: string;
+  custom_instructions: string;
+  system_prompt: string;
 }
 
 export interface WelcomeMsg {
@@ -167,6 +178,7 @@ export interface BotConfig {
   pluginsEnabled: PluginsEnabled;
   commandsDisabled: string[];
   customSettings: CustomSettings;
+  aiSettings: AiSettings;
   updatedAt: string;
 }
 

@@ -10,7 +10,7 @@ import {
 import { Link, useParams } from 'react-router-dom';
 import { IconClose, IconEdit, IconRefresh, IconTrash } from '../components/icons';
 import AppLayout from '../components/layout/AppLayout';
-import AutoReplyEditor from '../components/session/AutoReplyEditor';
+import AiSettingsEditor from '../components/session/AiSettingsEditor';
 import CommandAudit from '../components/session/CommandAudit';
 import CommandList from '../components/session/CommandList';
 import QRModal from '../components/session/QRModal';
@@ -286,7 +286,7 @@ function WhitelistChipEditor({
 }
 
 const TABS: { key: SessionTab; label: string }[] = [
-  { key: 'autoReply', label: 'Auto Reply' },
+  { key: 'ai', label: 'AI' },
   { key: 'plugin', label: 'Command' },
   { key: 'settings', label: 'Pengaturan' },
 ];
@@ -317,7 +317,7 @@ export default function SessionDetail() {
   const [savingCommand, setSavingCommand] = useState<string | null>(null);
   const [applyingPreset, setApplyingPreset] = useState<string | null>(null);
   const [auditLogs, setAuditLogs] = useState<ConfigAuditEntry[]>([]);
-  const [tab, setTab] = useState<SessionTab>('autoReply');
+  const [tab, setTab] = useState<SessionTab>('ai');
   const [settings, setSettings] = useState<CustomSettings | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
   const [restarting, setRestarting] = useState(false);
@@ -695,20 +695,20 @@ export default function SessionDetail() {
             ))}
           </div>
 
-          {tab === 'autoReply' && (
+          {tab === 'ai' && (
             <div className="tab-panel">
               <section
                 className="section"
                 role="tabpanel"
-                id="panel-autoReply"
-                aria-labelledby="tab-autoReply"
+                id="panel-ai"
+                aria-labelledby="tab-ai"
               >
                 <div className="section__head">
-                  <h2 className="section__title">Auto reply</h2>
-                  <p className="caption">{config.autoReply.length} rule tersimpan</p>
+                  <h2 className="section__title">Konfigurasi AI</h2>
+                  <p className="caption">Karakter bot saat membalas chat pribadi dan grup.</p>
                 </div>
                 <div className="card">
-                  <AutoReplyEditor sessionId={sessionId} config={config} onChange={setConfig} />
+                  <AiSettingsEditor sessionId={sessionId} config={config} onChange={setConfig} />
                 </div>
               </section>
             </div>

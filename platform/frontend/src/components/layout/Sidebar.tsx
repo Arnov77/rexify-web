@@ -37,7 +37,7 @@ interface SidebarProps {
 }
 
 const SUBNAV_TABS: { key: SessionTab; label: string }[] = [
-  { key: 'autoReply', label: 'Auto Reply' },
+  { key: 'ai', label: 'AI' },
   { key: 'plugin', label: 'Plugin' },
   { key: 'settings', label: 'Pengaturan' },
 ];

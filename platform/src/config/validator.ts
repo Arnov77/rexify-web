@@ -1,4 +1,5 @@
 import type {
+  AiSettings,
   AutoReplyRule,
   CustomSettings,
   MatchType,
@@ -9,6 +10,10 @@ import type {
 const MATCH_TYPES: MatchType[] = ['exact', 'contains', 'startswith', 'regex'];
 const MAX_PREFIX_LENGTH = 3;
 const MAX_TYPING_DELAY = 5000;
+// Batas panjang konfigurasi AI: cukup untuk prompt panjang, tapi tidak membengkakkan JSONB.
+const MAX_AI_NAME_LENGTH = 60;
+const MAX_AI_FIELD_LENGTH = 2000;
+const MAX_AI_SYSTEM_PROMPT_LENGTH = 12000;
 
 // Field teks customSettings yang boleh kosong (diisi user sendiri).
 const OPTIONAL_TEXT_FIELDS = [
@@ -231,6 +236,46 @@ export function validatePluginsEnabled(input: unknown): Partial<PluginsEnabled> 
       throw new ValidationError(`plugins_enabled.${key} harus boolean`);
     }
     result[key] = value;
+  }
+
+  return result;
+}
+
+// Field teks konfigurasi AI; urutannya sama dengan payload API (lihat auto-ai.js).
+const AI_TEXT_FIELDS = [
+  'name',
+  'persona',
+  'tone',
+  'defense_rules',
+  'custom_instructions',
+  'system_prompt',
+] as const;
+
+export function validateAiSettings(input: unknown): Partial<AiSettings> {
+  if (!isRecord(input)) {
+    throw new ValidationError('ai_settings harus berupa object');
+  }
+
+  const result: Partial<AiSettings> = {};
+
+  for (const field of AI_TEXT_FIELDS) {
+    const value = input[field];
+    if (value === undefined) continue;
+    if (typeof value !== 'string') {
+      throw new ValidationError(`ai_settings.${field} harus berupa teks`);
+    }
+
+    const max =
+      field === 'name'
+        ? MAX_AI_NAME_LENGTH
+        : field === 'system_prompt'
+          ? MAX_AI_SYSTEM_PROMPT_LENGTH
+          : MAX_AI_FIELD_LENGTH;
+    if (value.length > max) {
+      throw new ValidationError(`ai_settings.${field} maksimal ${max} karakter`);
+    }
+
+    result[field] = value.trim();
   }
 
   return result;
