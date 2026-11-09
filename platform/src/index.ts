@@ -34,7 +34,23 @@ async function main(): Promise<void> {
     throw new Error(`JWT_SECRET wajib di-set, minimal ${MIN_JWT_SECRET_LENGTH} karakter`);
   }
 
-  const app = Fastify({ logger: true });
+  const app = Fastify({
+    logger: {
+      serializers: {
+        // Query string dibuang dari log: token JWT WebSocket dikirim lewat ?token=.
+        // pino menggabungkan serializer ini dengan bawaan Fastify, jadi `res` dan `err` tetap.
+        req(request) {
+          return {
+            method: request.method,
+            url: request.url.split('?')[0],
+            hostname: request.hostname,
+            remoteAddress: request.ip,
+            remotePort: request.socket ? request.socket.remotePort : undefined,
+          };
+        },
+      },
+    },
+  });
 
   app.setErrorHandler((error, request, reply) => {
     if (error instanceof ValidationError) {
