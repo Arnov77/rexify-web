@@ -253,7 +253,7 @@ function WhitelistChipEditor({
             aria-label={`Hapus ${value}`}
             onClick={() => onChange(values.filter((item) => item !== value))}
           >
-            âœ•
+            ✕
           </button>
         </span>
       ))}
@@ -608,7 +608,7 @@ export default function SessionDetail() {
 
       {loading ? (
         <p className="caption" role="status">
-          Memuat sessionâ€¦
+          Memuat session…
         </p>
       ) : session && config ? (
         <>
@@ -633,7 +633,7 @@ export default function SessionDetail() {
                 <dd>
                   {session.connected_at
                     ? dateFormat.format(new Date(session.connected_at))
-                    : 'â€”'}
+                    : '-'}
                 </dd>
               </div>
               <div>
@@ -763,7 +763,7 @@ export default function SessionDetail() {
                 <form className="card settings-form" onSubmit={handleSaveSettings} noValidate>
                   <p className="notice notice--info notice--with-icon">
                     <span className="notice__icon" aria-hidden="true">
-                      â„¹
+                      ℹ
                     </span>
                     <span>Perubahan berlaku setelah bot di-restart.</span>
                   </p>
@@ -773,7 +773,7 @@ export default function SessionDetail() {
                     {user?.plan === 'free' && (
                       <p className="notice notice--warning notice--with-icon">
                         <span className="notice__icon" aria-hidden="true">
-                          ðŸ”’
+                          🔒
                         </span>
                         <span>Identitas bot hanya bisa diubah di plan Pro ke atas.</span>
                       </p>
@@ -796,7 +796,7 @@ export default function SessionDetail() {
                       />
                       <Input
                         label="URL thumbnail"
-                        placeholder="https://â€¦/thumbnail.jpg"
+                        placeholder="https://…/thumbnail.jpg"
                         value={settings.thumbnailUrl}
                         onChange={(event) => updateSetting('thumbnailUrl', event.target.value)}
                         inputMode="url"
@@ -804,7 +804,7 @@ export default function SessionDetail() {
                       />
                       <Input
                         label="URL audio"
-                        placeholder="https://â€¦/audio.mp3"
+                        placeholder="https://…/audio.mp3"
                         value={settings.audioUrl}
                         onChange={(event) => updateSetting('audioUrl', event.target.value)}
                         inputMode="url"
@@ -826,13 +826,13 @@ export default function SessionDetail() {
                     <div className="settings-grid">
                       <Input
                         label="Link grup"
-                        placeholder="https://chat.whatsapp.com/â€¦"
+                        placeholder="https://chat.whatsapp.com/…"
                         value={settings.link_group}
                         onChange={(event) => updateSetting('link_group', event.target.value)}
                       />
                       <Input
                         label="Link saluran"
-                        placeholder="https://whatsapp.com/channel/â€¦"
+                        placeholder="https://whatsapp.com/channel/…"
                         value={settings.link_saluran}
                         onChange={(event) => updateSetting('link_saluran', event.target.value)}
                       />
