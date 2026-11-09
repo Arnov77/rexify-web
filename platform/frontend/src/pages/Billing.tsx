@@ -22,6 +22,12 @@ import '../styles/billing.css';
 
 const PLAN_KEYS = Object.keys(BILLING_PLAN_INFO) as BillingPlan[];
 
+// Urutan paket berbayar. Dipakai untuk menyembunyikan paket di bawah plan aktif
+// (downgrade tidak didukung) dan memilih label tombol.
+function planRank(plan: string): number {
+  return PLAN_KEYS.indexOf(plan as BillingPlan);
+}
+
 const dateFormat = new Intl.DateTimeFormat('id-ID', {
   day: '2-digit',
   month: 'short',
@@ -166,49 +172,53 @@ export default function Billing() {
         </div>
       )}
 
-      {/* Section 2 — pilih paket (disembunyikan kalau sudah enterprise, sudah paling tinggi) */}
-      {plan !== 'enterprise' && (
-        <section className="section">
-          <div className="section__head">
-            <h2 className="section__title">Pilih paket</h2>
-            <p className="caption">Bayar QRIS, plan aktif otomatis setelah pembayaran lunas.</p>
-          </div>
+      {/* Section 2 — pilih paket. Paket di bawah plan aktif disembunyikan (downgrade tidak
+          didukung), jadi user enterprise tetap bisa memperpanjang plan-nya. */}
+      <section className="section">
+        <div className="section__head">
+          <h2 className="section__title">Pilih paket</h2>
+          <p className="caption">Bayar QRIS, plan aktif otomatis setelah pembayaran lunas.</p>
+        </div>
 
-          <div className="billing-plans">
-            {PLAN_KEYS.map((key) => {
-              const info = BILLING_PLAN_INFO[key];
-              const active = plan === key;
+        <div className="billing-plans">
+          {PLAN_KEYS.filter((key) => planRank(key) >= planRank(plan)).map((key) => {
+            const info = BILLING_PLAN_INFO[key];
+            const active = plan === key;
+            const label = active
+              ? 'Perpanjang'
+              : plan !== 'free' && planRank(key) > planRank(plan)
+                ? 'Upgrade'
+                : 'Pilih';
 
-              return (
-                <article
-                  key={key}
-                  className={active ? 'card plan-card plan-card--active' : 'card plan-card'}
-                >
-                  <div className="plan-card__head">
-                    <h3 className="plan-card__name">{info.label}</h3>
-                    {active && <span className="plan-card__badge">Plan Aktif</span>}
-                  </div>
+            return (
+              <article
+                key={key}
+                className={active ? 'card plan-card plan-card--active' : 'card plan-card'}
+              >
+                <div className="plan-card__head">
+                  <h3 className="plan-card__name">{info.label}</h3>
+                  {active && <span className="plan-card__badge">Plan Aktif</span>}
+                </div>
 
-                  <p className="plan-card__price">
-                    {formatRupiah(info.amount)}
-                    <span className="caption"> / {info.durationDays} hari</span>
-                  </p>
+                <p className="plan-card__price">
+                  {formatRupiah(info.amount)}
+                  <span className="caption"> / {info.durationDays} hari</span>
+                </p>
 
-                  <ul className="plan-card__list">
-                    <li>{info.sessions} bot WhatsApp</li>
-                    <li>Semua plugin &amp; AI chat</li>
-                    <li>Masa aktif {info.durationDays} hari</li>
-                  </ul>
+                <ul className="plan-card__list">
+                  <li>{info.sessions} bot WhatsApp</li>
+                  <li>Semua plugin &amp; AI chat</li>
+                  <li>Masa aktif {info.durationDays} hari</li>
+                </ul>
 
-                  <Button block onClick={() => setSelectedPlan(key)}>
-                    {active ? 'Perpanjang' : 'Pilih'}
-                  </Button>
-                </article>
-              );
-            })}
-          </div>
-        </section>
-      )}
+                <Button block onClick={() => setSelectedPlan(key)}>
+                  {label}
+                </Button>
+              </article>
+            );
+          })}
+        </div>
+      </section>
 
       {/* Section 3 — riwayat transaksi */}
       <section className="section">
@@ -295,7 +305,11 @@ export default function Billing() {
       {selectedPlan && (
         <BillingModal
           plan={selectedPlan}
-          onClose={() => setSelectedPlan(null)}
+          onClose={() => {
+            setSelectedPlan(null);
+            // Transaksi bisa saja dibatalkan dari modal: riwayat harus ikut segar.
+            void loadHistory();
+          }}
           onPaid={() => void handlePaid()}
         />
       )}
@@ -312,7 +326,10 @@ export default function Billing() {
                 }
               : undefined
           }
-          onClose={() => setResumeTarget(null)}
+          onClose={() => {
+            setResumeTarget(null);
+            void loadHistory();
+          }}
           onPaid={() => void handlePaid()}
         />
       )}

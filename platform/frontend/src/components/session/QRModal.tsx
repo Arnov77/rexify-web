@@ -245,28 +245,34 @@ export default function QRModal({
           </div>
         )}
 
-        {status === 'waiting' && (
+        {status === 'connected' ? (
           <p className="qr-modal__status" role="status">
-            Menyiapkan bot, harap tunggu...
+            WhatsApp terhubung
           </p>
-        )}
-
-        {status === 'qr' && (
+        ) : status === 'error' ? (
+          <p className="qr-modal__error" role="alert">
+            {error}
+          </p>
+        ) : mode === 'pairing' ? (
+          // Pairing memakai kode, bukan QR: jangan bilang "menunggu scan".
+          <p className="qr-modal__status" role="status">
+            {pairingCode ? (
+              <>
+                <span className="qr-modal__pulse" aria-hidden="true" />
+                Masukkan kode di atas di WhatsApp
+              </>
+            ) : (
+              'Menyiapkan kode pairing, harap tunggu...'
+            )}
+          </p>
+        ) : status === 'qr' ? (
           <p className="qr-modal__status" role="status">
             <span className="qr-modal__pulse" aria-hidden="true" />
             Menunggu scan...
           </p>
-        )}
-
-        {status === 'connected' && (
+        ) : (
           <p className="qr-modal__status" role="status">
-            WhatsApp terhubung
-          </p>
-        )}
-
-        {status === 'error' && (
-          <p className="qr-modal__error" role="alert">
-            {error}
+            Menyiapkan bot, harap tunggu...
           </p>
         )}
 

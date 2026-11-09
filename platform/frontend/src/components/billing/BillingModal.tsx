@@ -3,6 +3,7 @@ import Button from '../ui/Button';
 import { ApiError } from '../../lib/api';
 import {
   BILLING_PLAN_INFO,
+  cancelBilling,
   chargeBilling,
   formatRupiah,
   getBillingStatus,
@@ -49,6 +50,7 @@ export default function BillingModal({ plan, resume, onClose, onPaid }: BillingM
   const [remaining, setRemaining] = useState(EXPIRY_MS);
   // Dinaikkan tombol "Coba lagi" untuk memicu charge baru.
   const [attempt, setAttempt] = useState(0);
+  const [cancelling, setCancelling] = useState(false);
 
   const deadline = useRef(Date.now() + EXPIRY_MS);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -63,6 +65,31 @@ export default function BillingModal({ plan, resume, onClose, onPaid }: BillingM
   const retry = useCallback(() => {
     setAttempt((value) => value + 1);
   }, []);
+
+  // Tutup transaksi pending di server, bukan cuma modalnya: tanpa ini order tetap "Menunggu"
+  // di riwayat dan QR Midtrans masih bisa dibayar.
+  const handleCancel = useCallback(async (): Promise<void> => {
+    if (!orderId) {
+      onClose();
+      return;
+    }
+
+    setCancelling(true);
+    try {
+      await cancelBilling(orderId);
+      onClose();
+    } catch (err) {
+      // 409 = transaksi sudah tidak pending (keburu lunas/kadaluarsa): modal tetap ditutup.
+      if (err instanceof ApiError && err.status === 409) {
+        onClose();
+        return;
+      }
+      setError(err instanceof ApiError ? err.message : 'Gagal membatalkan pembayaran');
+      setState('failed');
+    } finally {
+      setCancelling(false);
+    }
+  }, [orderId, onClose]);
 
   // Charge baru tiap mount / retry, kecuali modal dibuka untuk melanjutkan transaksi pending.
   useEffect(() => {
@@ -202,7 +229,7 @@ export default function BillingModal({ plan, resume, onClose, onPaid }: BillingM
           type="button"
           className="qr-modal__cancel"
           onClick={onClose}
-          aria-label="Batalkan pembayaran"
+          aria-label="Tutup"
         >
           Batal
         </button>
@@ -280,7 +307,13 @@ export default function BillingModal({ plan, resume, onClose, onPaid }: BillingM
 
         {state !== 'success' && (
           <div className="billing-modal__actions">
-            <Button variant="secondary" size="sm" block onClick={onClose}>
+            <Button
+              variant="secondary"
+              size="sm"
+              block
+              loading={cancelling}
+              onClick={() => void handleCancel()}
+            >
               Batalkan pembayaran
             </Button>
           </div>
