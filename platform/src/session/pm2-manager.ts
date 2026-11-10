@@ -219,6 +219,8 @@ export async function spawnSession(userId: string, sessionId: string): Promise<v
   if (isRemoteMode()) {
     // Folder instance + symlink core dikerjakan Bot Runner; platform tetap pemilik config.json.
     const configFile = await generateConfig(sessionId);
+    // Zona waktu proses bot ikut config session (tz), bukan timezone VPS.
+    botEnv.TZ = configFile.tz || 'Asia/Jakarta';
     await spawnSessionRemote(userId, sessionId, botEnv, JSON.stringify(configFile));
 
     await createDefaultConfig(sessionId);
@@ -232,7 +234,10 @@ export async function spawnSession(userId: string, sessionId: string): Promise<v
   await mkdir(instanceSessionsDir(sessionId), { recursive: true });
   await mkdir(instanceDataDir(sessionId), { recursive: true });
 
-  await generateConfig(sessionId);
+  // Zona waktu proses bot ikut config session (tz), bukan timezone VPS: timestamp log
+  // (lib/logger.js) dan format tanggal lokal jadi sesuai setelan user.
+  const configFile = await generateConfig(sessionId);
+  botEnv.TZ = configFile.tz || 'Asia/Jakarta';
 
   const name = pm2Name(sessionId);
   await connectPm2();

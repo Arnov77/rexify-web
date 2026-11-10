@@ -41,6 +41,17 @@ const CORE_ENTRIES = [
 
 const requireAuth = { preHandler: authMiddleware(SECRET) }
 
+// TZ menentukan zona waktu log & format tanggal bot. glibc juga menerima TZ=:/path, jadi
+// nilainya divalidasi sebagai nama zona yang dikenal Intl, bukan diteruskan mentah.
+function validTimeZone(value) {
+    try {
+        new Intl.DateTimeFormat('en-US', { timeZone: value })
+        return true
+    } catch {
+        return false
+    }
+}
+
 function coreExists() {
     return existsSync(CORE_DIR)
 }
@@ -204,7 +215,7 @@ app.post('/spawn/:sessionId', requireAuth, async (request, reply) => {
     }
 
     // Whitelist: env arbitrer dari body bisa dipakai untuk RCE (mis. NODE_OPTIONS=--require ...).
-    const ALLOWED_ENV_KEYS = ['PHONE_NUMBER', 'CONNECT_MODE', 'REXIFY_WATERMARK', 'QR_OUTPUT_PATH']
+    const ALLOWED_ENV_KEYS = ['PHONE_NUMBER', 'CONNECT_MODE', 'REXIFY_WATERMARK', 'QR_OUTPUT_PATH', 'TZ']
 
     const rawEnv = body.env && typeof body.env === 'object' && !Array.isArray(body.env)
         ? body.env
@@ -212,7 +223,9 @@ app.post('/spawn/:sessionId', requireAuth, async (request, reply) => {
 
     const extraEnv = {}
     for (const key of ALLOWED_ENV_KEYS) {
-        if (typeof rawEnv[key] === 'string') extraEnv[key] = rawEnv[key]
+        if (typeof rawEnv[key] !== 'string') continue
+        if (key === 'TZ' && !validTimeZone(rawEnv.TZ)) continue
+        extraEnv[key] = rawEnv[key]
     }
 
     try {
