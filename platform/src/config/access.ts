@@ -1,9 +1,12 @@
 import type { CommandCatalog, CommandEntry } from '../types/config';
 import { getCommandCatalog } from './catalog';
-import { commandAccessFor, forcedDisabledCategoriesFor } from './plans';
+import { commandAccessFor, forcedDisabledFileListFor } from './plans';
 
 // Entry katalog boleh dipakai plan ini? Plugin `locked` (owner/rowner) dikunci flag sendiri.
+// File yang masuk force-disable plan (fitur premium) juga dianggap tidak tersedia, supaya
+// dashboard tidak menampilkan toggle yang sebenarnya tidak akan dijalankan bot.
 export function isEntryAvailableForPlan(plan: string, entry: CommandEntry): boolean {
+  if (forcedDisabledFileListFor(plan).includes(entry.file)) return false;
   const keep = commandAccessFor(plan).keepCategories;
   return keep === null || keep.includes(entry.category);
 }
@@ -32,13 +35,18 @@ export function allowedFileSetForPlan(plan: string): Set<string> {
   return files;
 }
 
-// File yang wajib dimatikan untuk plan ini walau user tidak mematikannya. Dipakai
-// generator supaya fitur di luar plan benar-benar tidak jalan di bot.
+// File yang wajib dimatikan untuk plan ini walau user tidak mematikannya. Sumbernya
+// keepCategories (kategori di luar plan) + daftar file eksplisit (fitur premium jerexd).
+// `locked` dikecualikan: mematikan plugin owner akan mengunci pemilik bot dari command-nya
+// sendiri, dan core sudah menggating-nya lewat plugin.owner.
 export function forcedDisabledFilesForPlan(plan: string): string[] {
-  const categories = forcedDisabledCategoriesFor(plan);
-  if (categories.length === 0) return [];
+  const keep = commandAccessFor(plan).keepCategories;
+  const byCategory =
+    keep === null
+      ? []
+      : getCommandCatalog()
+          .commands.filter((entry) => !keep.includes(entry.category) && !entry.locked)
+          .map((entry) => entry.file);
 
-  return getCommandCatalog()
-    .commands.filter((entry) => categories.includes(entry.category))
-    .map((entry) => entry.file);
+  return [...byCategory, ...forcedDisabledFileListFor(plan)];
 }

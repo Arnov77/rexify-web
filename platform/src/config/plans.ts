@@ -45,27 +45,35 @@ export interface CommandAccess {
   keepCategories: string[] | null;
 }
 
-// Gating command per plan: free dapat fitur inti, pro menambah AI/hiburan, enterprise
+// Kategori dasar plan free. Game, RPG, dan mini-app dibuka atas permintaan produk:
+// isi mini-app adalah game lokal (2048, snake, dst) plus dashboard RPG (rpgui), tanpa
+// biaya API, jadi mematikannya cuma memotong fitur tanpa menghemat apa pun.
+// `fun` dan `generator` juga dibuka; fitur premium di dalamnya tetap di-gate lewat
+// PLAN_FORCED_DISABLED_FILES (mis. generator/viuprem).
+const FREE_CATEGORIES = [
+  'group',
+  'info',
+  'tools',
+  'search',
+  'sticker',
+  'downloader',
+  'premium',
+  'games',
+  'game',
+  'rpg',
+  'mini-app',
+  'fun',
+  'generator',
+];
+
+// Gating command per plan: free dapat fitur inti, pro menambah AI/manga, enterprise
 // membuka semua. Plugin `owner` tetap terkunci untuk semua plan lewat flag `locked`.
 export const PLAN_COMMANDS: Record<PlanName, CommandAccess> = {
-  free: {
-    keepCategories: ['group', 'info', 'tools', 'search', 'sticker', 'downloader', 'premium'],
-  },
+  free: { keepCategories: FREE_CATEGORIES },
+  // Ditulis sebagai free + tambahan supaya pro tidak mungkin kehilangan kategori yang
+  // dimiliki free (sebelumnya pro justru tidak punya games/game/rpg).
   pro: {
-    keepCategories: [
-      'group',
-      'info',
-      'tools',
-      'search',
-      'sticker',
-      'downloader',
-      'premium',
-      'ai',
-      'fun',
-      'generator',
-      'mini-app',
-      'manga',
-    ],
+    keepCategories: [...FREE_CATEGORIES, 'ai', 'manga'],
   },
   enterprise: { keepCategories: null },
 };
@@ -75,15 +83,29 @@ export function commandAccessFor(plan: string): CommandAccess {
   return PLAN_COMMANDS[plan as PlanName] ?? PLAN_COMMANDS.free;
 }
 
-// Kategori yang selalu dimatikan untuk plan tertentu, apa pun setelan user.
-// `keepCategories` hanya mengunci baris di dashboard; core tetap butuh file-nya masuk
-// `commands_disabled`, kalau tidak plugin-nya jalan untuk plan yang tidak berhak.
-export const PLAN_FORCED_DISABLED_CATEGORIES: Record<PlanName, string[]> = {
-  free: ['ai'],
+// Plugin jerexd yang di core ditandai `plugin.premium = true` (butuh premium bot).
+// Token jerexd-nya sendiri dibuka untuk semua plan, jadi yang dimatikan untuk free cuma
+// fitur premiumnya: tanpa ini, kuota API jerexd tetap bisa kepakai lewat `.addprem`.
+// 3 plugin ai di bawah juga sudah tercakup PLAN_FORCED_DISABLED_CATEGORIES.free, tapi
+// didaftar ulang supaya aturan "fitur premium jerexd" tetap utuh kalau kategori ai berubah.
+export const PLAN_FORCED_DISABLED_FILES: Record<PlanName, string[]> = {
+  free: [
+    'plugins/ai/img2video.js',
+    'plugins/ai/suno.js',
+    'plugins/ai/vclone.js',
+    'plugins/generator/viuprem.js',
+    'plugins/tools/ambulk.js',
+    'plugins/tools/amgen.js',
+    'plugins/tools/cekevo.js',
+    'plugins/tools/cekmb.js',
+    'plugins/tools/cekprime.js',
+    'plugins/tools/gemini-plus.js',
+    'plugins/tools/reactch.js',
+  ],
   pro: [],
   enterprise: [],
 };
 
-export function forcedDisabledCategoriesFor(plan: string): string[] {
-  return PLAN_FORCED_DISABLED_CATEGORIES[plan as PlanName] ?? PLAN_FORCED_DISABLED_CATEGORIES.free;
+export function forcedDisabledFileListFor(plan: string): string[] {
+  return PLAN_FORCED_DISABLED_FILES[plan as PlanName] ?? PLAN_FORCED_DISABLED_FILES.free;
 }

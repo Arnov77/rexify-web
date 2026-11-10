@@ -74,11 +74,11 @@ export async function generateConfig(sessionId: string): Promise<BotConfigFile> 
     },
     tz: cs.tz || 'Asia/Jakarta',
     // token.rex: pakai key user kalau diisi, fallback ke env platform.
-    // token.jerexd: hanya di-inject untuk plan pro/enterprise, plan free dapat string kosong.
+    // token.jerexd: dibuka untuk semua plan. Yang di-gate per plan adalah fitur premiumnya
+    // (lihat PLAN_FORCED_DISABLED_FILES), bukan seluruh akses API.
     token: {
       rex: cs.token_rex || process.env.REX_API_KEY || '',
-      jerexd:
-        plan === 'pro' || plan === 'enterprise' ? process.env.JEREXD_API_KEY || '' : '',
+      jerexd: process.env.JEREXD_API_KEY || '',
     },
     git: {
       name: cs.git_name ? [cs.git_name] : [''],
