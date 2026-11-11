@@ -51,6 +51,44 @@ export interface CommandCatalog {
   commands: CommandEntry[];
 }
 
+// Template teks grup. Kunci harus sama dengan GROUP_TEXT_SLOTS di core/lib/customization.js.
+// String kosong = pakai default yang ditulis core/main.js.
+export interface GroupTexts {
+  welcome: string;
+  bye: string;
+  promote: string;
+  demote: string;
+  desc: string;
+  subject: string;
+  icon: string;
+  revoke: string;
+  announce_on: string;
+  announce_off: string;
+  restrict_on: string;
+  restrict_off: string;
+}
+
+// Gaya satu kategori menu. Field kosong = pakai TAG_META bawaan core/plugins/info/menu.js.
+export interface MenuTagStyle {
+  icon?: string;
+  label?: string;
+  order?: number;
+  hidden?: boolean;
+}
+
+export interface MenuCustomization {
+  header: string;
+  footer: string;
+  tags: Record<string, MenuTagStyle>;
+}
+
+// Tampilan yang bisa diubah user. Disimpan DI DALAM custom_settings (JSONB), bukan kolom
+// baru, lalu ditulis ke config.json sebagai key `customization`.
+export interface Customization {
+  group_texts: GroupTexts;
+  menu: MenuCustomization;
+}
+
 export interface CustomSettings {
   // Identitas bot
   botname: string;
@@ -90,6 +128,9 @@ export interface CustomSettings {
   token_jerexd: string;
   git_name: string;
   git_token: string;
+
+  // Template grup & tampilan menu (lihat Customization di atas)
+  customization: Customization;
 }
 
 export interface BotConfig {
@@ -149,4 +190,6 @@ export interface BotConfigFile {
   commands_disabled: string[];
   // Dibaca core sebagai global.ai (lihat core/lib/global.js dan plugins/ai/auto-ai.js).
   ai: AiSettings;
+  // Dibaca core lewat lib/customization.js (template grup + header/footer/tag menu).
+  customization: Customization;
 }

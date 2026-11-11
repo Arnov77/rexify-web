@@ -2,6 +2,7 @@ import type {
   AiSettings,
   AutoReplyRule,
   BotConfigFile,
+  Customization,
   CustomSettings,
   PluginsEnabled,
   WelcomeMsg,
@@ -38,6 +39,28 @@ export const DEFAULT_PLUGINS_ENABLED: PluginsEnabled = {
 
 // Belum ada plugin yang dimatikan: semua command aktif seperti kondisi core saat ini.
 export const DEFAULT_COMMANDS_DISABLED: string[] = [];
+
+// Kosong = pakai default yang ditulis core/main.js. Kunci HARUS sama dengan
+// GROUP_TEXT_SLOTS di core/lib/customization.js, kalau tidak override-nya tidak terbaca.
+export function defaultCustomization(): Customization {
+  return {
+    group_texts: {
+      welcome: '',
+      bye: '',
+      promote: '',
+      demote: '',
+      desc: '',
+      subject: '',
+      icon: '',
+      revoke: '',
+      announce_on: '',
+      announce_off: '',
+      restrict_on: '',
+      restrict_off: '',
+    },
+    menu: { header: '', footer: '', tags: {} },
+  };
+}
 
 export const DEFAULT_CUSTOM_SETTINGS: CustomSettings = {
   // Identitas bot
@@ -78,6 +101,9 @@ export const DEFAULT_CUSTOM_SETTINGS: CustomSettings = {
   token_jerexd: '',
   git_name: '',
   git_token: '',
+
+  // Template grup & tampilan menu (dikosongkan = default core)
+  customization: defaultCustomization(),
 };
 
 // Default config.json instance rex-bot-v2. core/lib/global.js melakukan
@@ -133,5 +159,6 @@ export function defaultBotConfig(): BotConfigFile {
     welcome_msg: { ...DEFAULT_WELCOME_MSG },
     commands_disabled: [...DEFAULT_COMMANDS_DISABLED],
     ai: { ...DEFAULT_AI_SETTINGS },
+    customization: defaultCustomization(),
   };
 }

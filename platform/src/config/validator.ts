@@ -1,8 +1,12 @@
 import type {
   AiSettings,
   AutoReplyRule,
+  Customization,
   CustomSettings,
+  GroupTexts,
   MatchType,
+  MenuCustomization,
+  MenuTagStyle,
   PluginsEnabled,
   WelcomeMsg,
 } from '../types/config';
@@ -14,6 +18,29 @@ const MAX_TYPING_DELAY = 5000;
 const MAX_AI_NAME_LENGTH = 60;
 const MAX_AI_FIELD_LENGTH = 2000;
 const MAX_AI_SYSTEM_PROMPT_LENGTH = 12000;
+// Template per grup: cukup untuk menu intro panjang, tapi tidak membengkakkan JSONB.
+const MAX_TEMPLATE_LENGTH = 1500;
+const MAX_MENU_TEXT_LENGTH = 1200;
+const MAX_TAG_ICON_LENGTH = 8;
+const MAX_TAG_LABEL_LENGTH = 32;
+const MAX_TAG_ORDER = 999;
+const MAX_MENU_TAGS = 60;
+// Kunci harus sama dengan GROUP_TEXT_SLOTS di core/lib/customization.js.
+const GROUP_TEXT_KEYS = [
+  'welcome',
+  'bye',
+  'promote',
+  'demote',
+  'desc',
+  'subject',
+  'icon',
+  'revoke',
+  'announce_on',
+  'announce_off',
+  'restrict_on',
+  'restrict_off',
+] as const;
+const TAG_NAME_PATTERN = /^[a-z0-9_]{1,24}$/;
 
 // Field teks customSettings yang boleh kosong (diisi user sendiri).
 const OPTIONAL_TEXT_FIELDS = [
@@ -200,7 +227,115 @@ export function validateCustomSettings(input: unknown): Partial<CustomSettings> 
     });
   }
 
+  // Template grup & tampilan menu. Divalidasi utuh (bukan patch) karena satu objek utuh
+  // dikirim dari form; kunci yang tidak dikirim jatuh ke string kosong = default core.
+  if (input.customization !== undefined) {
+    result.customization = validateCustomization(input.customization);
+  }
+
   return result;
+}
+
+export function validateCustomization(input: unknown): Customization {
+  if (!isRecord(input)) {
+    throw new ValidationError('customization harus berupa object');
+  }
+
+  const texts = {} as GroupTexts;
+  const rawTexts = isRecord(input.group_texts) ? input.group_texts : {};
+
+  for (const key of GROUP_TEXT_KEYS) {
+    const value = rawTexts[key];
+    if (value === undefined || value === null) {
+      texts[key] = '';
+      continue;
+    }
+    if (typeof value !== 'string') {
+      throw new ValidationError(`customization.group_texts.${key} harus teks`);
+    }
+    if (value.length > MAX_TEMPLATE_LENGTH) {
+      throw new ValidationError(
+        `customization.group_texts.${key} maksimal ${MAX_TEMPLATE_LENGTH} karakter`,
+      );
+    }
+    // Teks berisi spasi saja dianggap kosong supaya default core tetap dipakai.
+    texts[key] = value.trim() === '' ? '' : value;
+  }
+
+  const rawMenu = isRecord(input.menu) ? input.menu : {};
+  const menu: MenuCustomization = { header: '', footer: '', tags: {} };
+
+  for (const key of ['header', 'footer'] as const) {
+    const value = rawMenu[key];
+    if (value === undefined || value === null) continue;
+    if (typeof value !== 'string') {
+      throw new ValidationError(`customization.menu.${key} harus teks`);
+    }
+    if (value.length > MAX_MENU_TEXT_LENGTH) {
+      throw new ValidationError(`customization.menu.${key} maksimal ${MAX_MENU_TEXT_LENGTH} karakter`);
+    }
+    menu[key] = value;
+  }
+
+  const rawTags = isRecord(rawMenu.tags) ? rawMenu.tags : {};
+  const tagNames = Object.keys(rawTags);
+  if (tagNames.length > MAX_MENU_TAGS) {
+    throw new ValidationError(`customization.menu.tags maksimal ${MAX_MENU_TAGS} kategori`);
+  }
+
+  for (const tag of tagNames) {
+    if (!TAG_NAME_PATTERN.test(tag)) {
+      throw new ValidationError(
+        `customization.menu.tags.${tag}: nama kategori hanya huruf kecil, angka, dan underscore`,
+      );
+    }
+
+    const raw = rawTags[tag];
+    if (!isRecord(raw)) {
+      throw new ValidationError(`customization.menu.tags.${tag} harus berupa object`);
+    }
+
+    const style: MenuTagStyle = {};
+    if (raw.icon !== undefined) {
+      if (typeof raw.icon !== 'string' || raw.icon.length > MAX_TAG_ICON_LENGTH) {
+        throw new ValidationError(
+          `customization.menu.tags.${tag}.icon maksimal ${MAX_TAG_ICON_LENGTH} karakter`,
+        );
+      }
+      if (raw.icon.trim()) style.icon = raw.icon.trim();
+    }
+    if (raw.label !== undefined) {
+      if (typeof raw.label !== 'string' || raw.label.length > MAX_TAG_LABEL_LENGTH) {
+        throw new ValidationError(
+          `customization.menu.tags.${tag}.label maksimal ${MAX_TAG_LABEL_LENGTH} karakter`,
+        );
+      }
+      if (raw.label.trim()) style.label = raw.label.trim();
+    }
+    if (raw.order !== undefined) {
+      if (
+        typeof raw.order !== 'number' ||
+        !Number.isInteger(raw.order) ||
+        raw.order < 0 ||
+        raw.order > MAX_TAG_ORDER
+      ) {
+        throw new ValidationError(
+          `customization.menu.tags.${tag}.order harus bilangan bulat 0-${MAX_TAG_ORDER}`,
+        );
+      }
+      style.order = raw.order;
+    }
+    if (raw.hidden !== undefined) {
+      if (typeof raw.hidden !== 'boolean') {
+        throw new ValidationError(`customization.menu.tags.${tag}.hidden harus boolean`);
+      }
+      style.hidden = raw.hidden;
+    }
+
+    menu.tags[tag] = style;
+  }
+
+  return { group_texts: texts, menu };
 }
 
 export function validateWelcomeMsg(input: unknown): Partial<WelcomeMsg> {

@@ -26,7 +26,7 @@ export type SessionStatus = 'connecting' | 'qr_pending' | 'active' | 'disconnect
 
 export type ConnectMode = 'qr' | 'pairing';
 
-export type SessionTab = 'ai' | 'plugin' | 'settings';
+export type SessionTab = 'ai' | 'plugin' | 'tampilan' | 'settings';
 
 export interface Session {
   id: string;
@@ -132,6 +132,42 @@ export interface PremiumPackage {
   permanent?: boolean;
 }
 
+// Template teks grup. Kunci harus sama dengan GROUP_TEXT_SLOTS di core/lib/customization.js.
+// String kosong = pakai default yang ditulis core/main.js.
+export interface GroupTexts {
+  welcome: string;
+  bye: string;
+  promote: string;
+  demote: string;
+  desc: string;
+  subject: string;
+  icon: string;
+  revoke: string;
+  announce_on: string;
+  announce_off: string;
+  restrict_on: string;
+  restrict_off: string;
+}
+
+// Gaya satu kategori menu. Field kosong = pakai TAG_META bawaan core/plugins/info/menu.js.
+export interface MenuTagStyle {
+  icon?: string;
+  label?: string;
+  order?: number;
+  hidden?: boolean;
+}
+
+export interface MenuCustomization {
+  header: string;
+  footer: string;
+  tags: Record<string, MenuTagStyle>;
+}
+
+export interface Customization {
+  group_texts: GroupTexts;
+  menu: MenuCustomization;
+}
+
 export interface CustomSettings {
   // Identitas bot
   botname: string;
@@ -171,6 +207,9 @@ export interface CustomSettings {
   token_jerexd: string;
   git_name: string;
   git_token: string;
+
+  // Template grup & tampilan menu
+  customization: Customization;
 }
 
 export interface BotConfig {

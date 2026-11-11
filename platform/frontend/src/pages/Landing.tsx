@@ -11,6 +11,7 @@ import {
   type IconProps,
 } from '../components/icons';
 import { useAuth } from '../lib/auth';
+import { supportChannels } from '../lib/support';
 import { withViewTransition } from '../lib/viewTransition';
 import Logo from '../components/Logo';
 import '../styles/landing.css';
@@ -424,9 +425,23 @@ export default function Landing() {
             <Logo size={24} className="landing-footer__logo" />
             <span>© 2026 Rexify</span>
           </div>
-          <nav className="landing-footer__links" aria-label="Dokumen layanan">
+          <nav className="landing-footer__links" aria-label="Tautan layanan dan bantuan">
             <Link to="/terms">Syarat dan Ketentuan</Link>
             <Link to="/privacy">Kebijakan Privasi</Link>
+            {supportChannels().map((channel) => {
+              const external = channel.href.startsWith('http');
+              return (
+                <a
+                  key={channel.id}
+                  href={channel.href}
+                  title={channel.hint}
+                  target={external ? '_blank' : undefined}
+                  rel={external ? 'noreferrer noopener' : undefined}
+                >
+                  {channel.label}
+                </a>
+              );
+            })}
           </nav>
           <span>
             Dibuat dengan <IconHeart size={14} className="landing-footer__heart" /> oleh Arnov

@@ -112,6 +112,53 @@
   white-space: nowrap;
 }
 
+/* Kanal bantuan (WhatsApp/Telegram/Email) di footer sidebar */
+.support-links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: 0 var(--space-md);
+}
+
+.support-links__title {
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.support-links__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.support-link {
+  padding: 4px 10px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-caption);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease), color var(--duration-fast) var(--ease);
+}
+
+.support-link:hover {
+  background: var(--color-surface-raised);
+  color: var(--color-text-primary);
+}
+
+.sidebar--collapsed .support-links {
+  padding: 0;
+  align-items: center;
+}
+
+.sidebar--collapsed .support-links__row {
+  flex-direction: column;
+  align-items: center;
+}
+
 /* Badge plan user (footer sidebar) */
 .plan-badge {
   align-self: flex-start;

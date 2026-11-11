@@ -11,6 +11,7 @@ import { Link, useParams } from 'react-router-dom';
 import { IconClose, IconEdit, IconRefresh, IconTrash } from '../components/icons';
 import AppLayout from '../components/layout/AppLayout';
 import AiSettingsEditor from '../components/session/AiSettingsEditor';
+import CustomizationEditor from '../components/session/CustomizationEditor';
 import CommandAudit from '../components/session/CommandAudit';
 import CommandList from '../components/session/CommandList';
 import QRModal from '../components/session/QRModal';
@@ -288,6 +289,7 @@ function WhitelistChipEditor({
 const TABS: { key: SessionTab; label: string }[] = [
   { key: 'ai', label: 'AI' },
   { key: 'plugin', label: 'Command' },
+  { key: 'tampilan', label: 'Tampilan' },
   { key: 'settings', label: 'Pengaturan' },
 ];
 
@@ -755,6 +757,33 @@ export default function SessionDetail() {
                   onRefresh={() => void handleRefreshCatalog()}
                 />
                 <CommandAudit logs={auditLogs} />
+              </section>
+            </div>
+          )}
+
+          {tab === 'tampilan' && (
+            <div className="tab-panel">
+              <section
+                className="section"
+                role="tabpanel"
+                id="panel-tampilan"
+                aria-labelledby="tab-tampilan"
+              >
+                <div className="section__head">
+                  <h2 className="section__title">Tampilan & template</h2>
+                  <p className="caption">
+                    Teks notifikasi grup dan tampilan menu. Perubahan langsung dipakai bot (hot
+                    reload).
+                  </p>
+                </div>
+                <div className="card">
+                  <CustomizationEditor
+                    sessionId={sessionId}
+                    config={config}
+                    categories={commandCatalog?.categories ?? []}
+                    onChange={setConfig}
+                  />
+                </div>
               </section>
             </div>
           )}
