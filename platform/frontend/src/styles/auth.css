@@ -90,10 +90,20 @@
   color: var(--color-text-secondary);
 }
 
-.auth-footer a {
+.auth-footer a,
+.auth-footer__link {
   color: var(--color-text-primary);
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+/* Tombol aksi di footer (mis. logout sebelum kembali ke /login) tampil seperti link. */
+.auth-footer__link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
 }
 
 .auth-note {

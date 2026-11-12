@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import Logo from '../components/Logo';
 import Button from '../components/ui/Button';
 import { ApiError, apiRequest } from '../lib/api';
@@ -20,7 +20,7 @@ function cooldownFromError(err: unknown): number | null {
 }
 
 export default function VerifyEmail() {
-  const { user, loading, markEmailVerified } = useAuth();
+  const { user, loading, markEmailVerified, logout } = useAuth();
   const navigate = useNavigate();
   const [otp, setOtp] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -82,6 +82,13 @@ export default function VerifyEmail() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  // Logout dulu: kalau cuma navigate ke /login, Login.tsx mendeteksi user yang masih
+  // login tapi belum verified dan mengembalikan kita ke /verify-email (redirect loop).
+  function handleBackToLogin() {
+    logout();
+    navigate('/login', { replace: true });
   }
 
   if (loading) {
@@ -154,7 +161,10 @@ export default function VerifyEmail() {
         </form>
 
         <p className="auth-footer">
-          Salah email? <Link to="/login">Kembali ke halaman masuk</Link>
+          Salah email?{' '}
+          <button type="button" className="auth-footer__link" onClick={handleBackToLogin}>
+            Kembali ke halaman masuk
+          </button>
         </p>
       </div>
     </div>
