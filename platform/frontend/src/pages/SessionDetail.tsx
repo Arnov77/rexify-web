@@ -45,6 +45,7 @@ import type {
   PremiumPackage,
   Session,
   SessionTab,
+  SewaPackage,
 } from '../lib/types';
 import '../styles/detail.css';
 
@@ -189,6 +190,109 @@ function PremiumPackagesEditor({ packages, onChange }: PremiumPackagesEditorProp
                     type="button"
                     className="icon-btn icon-btn--danger"
                     aria-label={`Hapus paket ${pkg.label || pkg.id || index + 1}`}
+                    onClick={() => remove(index)}
+                  >
+                    <IconTrash size={16} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <Button variant="secondary" size="sm" className="pkg-add" onClick={add}>
+        + Tambah paket
+      </Button>
+    </div>
+  );
+}
+
+interface SewaPackagesEditorProps {
+  packages: SewaPackage[];
+  onChange: (packages: SewaPackage[]) => void;
+}
+
+// Editor paket sewa: sama seperti paket premium, tanpa opsi permanen.
+function SewaPackagesEditor({ packages, onChange }: SewaPackagesEditorProps) {
+  function patch(index: number, changes: Partial<SewaPackage>) {
+    onChange(packages.map((pkg, i) => (i === index ? { ...pkg, ...changes } : pkg)));
+  }
+
+  function remove(index: number) {
+    onChange(packages.filter((_, i) => i !== index));
+  }
+
+  function add() {
+    onChange([...packages, { id: '', label: '', days: 1, price: 0 }]);
+  }
+
+  return (
+    <div>
+      <div className="pkg-table-wrapper">
+        <table className="pkg-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Label</th>
+              <th>Hari</th>
+              <th>Harga</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            {packages.length === 0 && (
+              <tr>
+                <td className="caption" colSpan={5}>
+                  Belum ada paket sewa.
+                </td>
+              </tr>
+            )}
+            {packages.map((pkg, index) => (
+              <tr key={index}>
+                <td data-label="ID">
+                  <input
+                    className="input pkg-input"
+                    value={pkg.id}
+                    placeholder="7hari"
+                    aria-label={`ID paket sewa ${index + 1}`}
+                    onChange={(event) => patch(index, { id: event.target.value })}
+                  />
+                </td>
+                <td data-label="Label">
+                  <input
+                    className="input pkg-input"
+                    value={pkg.label}
+                    placeholder="7 Hari"
+                    aria-label={`Label paket sewa ${index + 1}`}
+                    onChange={(event) => patch(index, { label: event.target.value })}
+                  />
+                </td>
+                <td data-label="Hari">
+                  <input
+                    className="input pkg-input pkg-input--sm"
+                    type="number"
+                    min={1}
+                    max={3650}
+                    value={pkg.days}
+                    aria-label={`Hari paket sewa ${index + 1}`}
+                    onChange={(event) => patch(index, { days: Number(event.target.value) || 0 })}
+                  />
+                </td>
+                <td data-label="Harga">
+                  <input
+                    className="input pkg-input pkg-input--sm"
+                    type="number"
+                    min={0}
+                    value={pkg.price}
+                    aria-label={`Harga paket sewa ${index + 1}`}
+                    onChange={(event) => patch(index, { price: Number(event.target.value) || 0 })}
+                  />
+                </td>
+                <td data-label="Aksi">
+                  <button
+                    type="button"
+                    className="icon-btn icon-btn--danger"
+                    aria-label={`Hapus paket sewa ${pkg.label || pkg.id || index + 1}`}
                     onClick={() => remove(index)}
                   >
                     <IconTrash size={16} />
@@ -902,6 +1006,56 @@ export default function SessionDetail() {
                     <PremiumPackagesEditor
                       packages={settings.premium_packages ?? []}
                       onChange={(next) => updateSetting('premium_packages', next)}
+                    />
+                  </fieldset>
+
+                  <fieldset className="settings-group">
+                    <legend className="settings-group__title">Sewa bot</legend>
+                    <div className="sewa-toggle-row">
+                      <div>
+                        <span className="field__label">Aktifkan fitur sewa</span>
+                        <p className="field__hint">
+                          Default mati. Saat aktif, bot otomatis keluar dari grup yang tidak ada di
+                          list sewa dalam 5 menit, dan keluar saat masa sewa habis.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={settings.sewa_enabled ?? false}
+                        aria-label={`Fitur sewa ${settings.sewa_enabled ? 'aktif' : 'mati'}`}
+                        className={settings.sewa_enabled ? 'toggle toggle--on' : 'toggle'}
+                        onClick={() => updateSetting('sewa_enabled', !(settings.sewa_enabled ?? false))}
+                      >
+                        <span className="sr-only">Aktifkan fitur sewa</span>
+                      </button>
+                    </div>
+
+                    <div className="field">
+                      <label className="field__label" htmlFor="sewa-info">
+                        Info pembelian
+                      </label>
+                      <textarea
+                        id="sewa-info"
+                        className="textarea"
+                        rows={3}
+                        value={settings.sewa_info ?? ''}
+                        placeholder="Contoh: Bayar via QRIS, lalu kirim bukti ke owner. Bot aktif maksimal 1x24 jam setelah pembayaran."
+                        maxLength={2000}
+                        onChange={(event) => updateSetting('sewa_info', event.target.value)}
+                      />
+                      <p className="field__hint">
+                        Ditampilkan di command .sewa. Kosongkan kalau tidak perlu info tambahan.
+                      </p>
+                    </div>
+
+                    <p className="settings-group__hint">
+                      Paket sewa (harga &amp; durasi). Kosong = command .sewa menampilkan “belum ada
+                      paket sewa”.
+                    </p>
+                    <SewaPackagesEditor
+                      packages={settings.sewa_packages ?? []}
+                      onChange={(next) => updateSetting('sewa_packages', next)}
                     />
                   </fieldset>
 

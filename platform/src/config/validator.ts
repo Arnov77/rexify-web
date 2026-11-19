@@ -14,6 +14,10 @@ const MAX_TYPING_DELAY = 5000;
 const MAX_AI_NAME_LENGTH = 60;
 const MAX_AI_FIELD_LENGTH = 2000;
 const MAX_AI_SYSTEM_PROMPT_LENGTH = 12000;
+// Sewa bot: info pembelian cukup panjang, tapi jangan sampai membengkakkan JSONB.
+const MAX_SEWA_INFO_LENGTH = 2000;
+const MAX_SEWA_PACKAGES = 50;
+const MAX_SEWA_DAYS = 3650;
 
 // Field teks customSettings yang boleh kosong (diisi user sendiri).
 const OPTIONAL_TEXT_FIELDS = [
@@ -196,6 +200,64 @@ export function validateCustomSettings(input: unknown): Partial<CustomSettings> 
         days: Math.floor(item.days),
         price: Math.floor(item.price),
         ...(item.permanent === undefined ? {} : { permanent: Boolean(item.permanent) }),
+      };
+    });
+  }
+
+  if (input.sewa_enabled !== undefined) {
+    if (typeof input.sewa_enabled !== 'boolean') {
+      throw new ValidationError('sewa_enabled harus boolean');
+    }
+    result.sewa_enabled = input.sewa_enabled;
+  }
+
+  if (input.sewa_info !== undefined) {
+    if (typeof input.sewa_info !== 'string') {
+      throw new ValidationError('sewa_info harus berupa teks');
+    }
+    if (input.sewa_info.length > MAX_SEWA_INFO_LENGTH) {
+      throw new ValidationError(`sewa_info maksimal ${MAX_SEWA_INFO_LENGTH} karakter`);
+    }
+    result.sewa_info = input.sewa_info.trim();
+  }
+
+  if (input.sewa_packages !== undefined) {
+    const packages = input.sewa_packages;
+    if (!Array.isArray(packages)) {
+      throw new ValidationError('sewa_packages harus array');
+    }
+    if (packages.length > MAX_SEWA_PACKAGES) {
+      throw new ValidationError(`sewa_packages maksimal ${MAX_SEWA_PACKAGES} paket`);
+    }
+
+    result.sewa_packages = packages.map((item, index) => {
+      if (!isRecord(item)) {
+        throw new ValidationError(`sewa_packages[${index}] harus berupa object`);
+      }
+
+      const id = typeof item.id === 'string' ? item.id.trim() : '';
+      const label = typeof item.label === 'string' ? item.label.trim() : '';
+
+      if (!id) throw new ValidationError(`sewa_packages[${index}].id wajib diisi`);
+      if (!label) throw new ValidationError(`sewa_packages[${index}].label wajib diisi`);
+      if (
+        typeof item.days !== 'number' ||
+        !Number.isFinite(item.days) ||
+        !Number.isInteger(item.days) ||
+        item.days < 1 ||
+        item.days > MAX_SEWA_DAYS
+      ) {
+        throw new ValidationError(`sewa_packages[${index}].days harus bilangan bulat 1-${MAX_SEWA_DAYS}`);
+      }
+      if (typeof item.price !== 'number' || !Number.isFinite(item.price) || item.price < 0) {
+        throw new ValidationError(`sewa_packages[${index}].price harus angka >= 0`);
+      }
+
+      return {
+        id,
+        label,
+        days: item.days,
+        price: Math.floor(item.price),
       };
     });
   }

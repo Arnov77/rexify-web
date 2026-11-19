@@ -67,6 +67,11 @@ export const DEFAULT_CUSTOM_SETTINGS: CustomSettings = {
   // Premium packages (kosong = pakai paket default bot)
   premium_packages: [],
 
+  // Sewa bot (default mati, paket kosong)
+  sewa_enabled: false,
+  sewa_packages: [],
+  sewa_info: '',
+
   // Behaviour
   prefix: '.',
   tz: 'Asia/Jakarta',
@@ -119,6 +124,11 @@ export function defaultBotConfig(): BotConfigFile {
         { id: '30hari', label: '30 Hari', days: 30, price: 10000 },
         { id: 'permanen', label: 'Permanen', days: 0, price: 50000, permanent: true },
       ],
+    },
+    sewa: {
+      enabled: false,
+      packages: [],
+      info: '',
     },
     git: { name: [''], token: [''] },
     apikey: {

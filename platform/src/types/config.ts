@@ -79,6 +79,11 @@ export interface CustomSettings {
   // Premium packages
   premium_packages: PremiumPackage[];
 
+  // Sewa bot (fitur per grup, diaktifkan manual)
+  sewa_enabled: boolean;
+  sewa_packages: SewaPackage[];
+  sewa_info: string;
+
   // Behaviour
   prefix: string;
   tz: string;
@@ -125,6 +130,14 @@ export interface PremiumPackage {
   permanent?: boolean;
 }
 
+// Paket sewa bot: durasi dalam hari, tanpa opsi permanen (core memaksa batas 3650 hari).
+export interface SewaPackage {
+  id: string;
+  label: string;
+  days: number;
+  price: number;
+}
+
 // Bentuk config.json yang dibaca instance rex-bot-v2: semua key yang dipakai core wajib ada.
 // Blok midtrans & proxy sengaja tidak ditulis, core memakai default-nya sendiri.
 export interface BotConfigFile {
@@ -141,6 +154,8 @@ export interface BotConfigFile {
   limit: { free: number; premium: number };
   antilink: { whitelist_domain: string[]; whitelist_number: string[] };
   premium: { packages: PremiumPackage[] };
+  // Fitur sewa bot per grup. Default mati dan tanpa paket.
+  sewa: { enabled: boolean; packages: SewaPackage[]; info: string };
   git: { name: string[]; token: string[] };
   apikey: { rex: string; jerexd: string };
   token: { rex: string; jerexd: string };

@@ -72,6 +72,12 @@ export async function generateConfig(sessionId: string): Promise<BotConfigFile> 
     premium: {
       packages: cs.premium_packages.length ? cs.premium_packages : base.premium.packages,
     },
+    // Sewa bot: default mati & paket kosong, persis seperti dashboard.
+    sewa: {
+      enabled: cs.sewa_enabled ?? false,
+      packages: cs.sewa_packages ?? [],
+      info: cs.sewa_info ?? '',
+    },
     tz: cs.tz || 'Asia/Jakarta',
     // token.rex: pakai key user kalau diisi, fallback ke env platform.
     // token.jerexd: hanya di-inject untuk plan pro/enterprise, plan free dapat string kosong.

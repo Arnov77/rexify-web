@@ -86,6 +86,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   premium: 'Premium',
   rpg: 'RPG',
   search: 'Pencarian',
+  sewa: 'Sewa',
   sticker: 'Sticker',
   tools: 'Tools',
   events: 'Event',

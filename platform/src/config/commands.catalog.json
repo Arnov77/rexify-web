@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-11-07T13:25:40.034Z",
+  "generatedAt": "2026-11-19T00:48:29.904Z",
   "source": "core/plugins",
-  "total": 184,
+  "total": 185,
   "commands": [
     {
       "file": "plugins/ai/auto-ai.js",
@@ -2579,6 +2579,30 @@
       "help": [
         "smeme",
         "sticker-meme"
+      ],
+      "locked": false,
+      "defaultDisabled": false
+    },
+    {
+      "file": "plugins/sewa/sewa.js",
+      "category": "sewa",
+      "commands": [
+        "sewa",
+        "ceksewa",
+        "addsewa",
+        "delsewa",
+        "listsewa"
+      ],
+      "tags": [
+        "sewa"
+      ],
+      "help": [
+        "sewa",
+        "ceksewa",
+        "addsewa <durasi> (owner)",
+        "addsewa <link grup> <durasi> (owner)",
+        "delsewa [link grup] (owner)",
+        "listsewa (owner)"
       ],
       "locked": false,
       "defaultDisabled": false

@@ -132,6 +132,14 @@ export interface PremiumPackage {
   permanent?: boolean;
 }
 
+// Paket sewa bot (tanpa opsi permanen).
+export interface SewaPackage {
+  id: string;
+  label: string;
+  days: number;
+  price: number;
+}
+
 export interface CustomSettings {
   // Identitas bot
   botname: string;
@@ -159,6 +167,11 @@ export interface CustomSettings {
 
   // Premium packages
   premium_packages: PremiumPackage[];
+
+  // Sewa bot
+  sewa_enabled: boolean;
+  sewa_packages: SewaPackage[];
+  sewa_info: string;
 
   // Behaviour
   prefix: string;

@@ -190,6 +190,26 @@
   }
 }
 
+/* Sewa bot: baris toggle di dalam settings-group */
+.sewa-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding-bottom: var(--space-sm);
+  margin-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.sewa-toggle-row .field__label {
+  display: block;
+  margin-bottom: var(--space-xs);
+}
+
+.sewa-toggle-row .field__hint {
+  margin: 0;
+}
+
 /* Premium packages editor */
 .pkg-table-wrapper {
   overflow-x: auto;

@@ -49,7 +49,7 @@ export interface CommandAccess {
 // membuka semua. Plugin `owner` tetap terkunci untuk semua plan lewat flag `locked`.
 export const PLAN_COMMANDS: Record<PlanName, CommandAccess> = {
   free: {
-    keepCategories: ['group', 'info', 'tools', 'search', 'sticker', 'downloader', 'premium'],
+    keepCategories: ['group', 'info', 'tools', 'search', 'sticker', 'downloader', 'premium', 'sewa'],
   },
   pro: {
     keepCategories: [
@@ -60,6 +60,7 @@ export const PLAN_COMMANDS: Record<PlanName, CommandAccess> = {
       'sticker',
       'downloader',
       'premium',
+      'sewa',
       'ai',
       'fun',
       'generator',
