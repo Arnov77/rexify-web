@@ -1,7 +1,7 @@
 {
   "generatedAt": "2026-11-19T00:48:29.904Z",
   "source": "core/plugins",
-  "total": 185,
+  "total": 186,
   "commands": [
     {
       "file": "plugins/ai/auto-ai.js",
@@ -972,6 +972,23 @@
       ],
       "help": [
         "autotranslate"
+      ],
+      "locked": false,
+      "defaultDisabled": false
+    },
+    {
+      "file": "plugins/group/banword.js",
+      "category": "group",
+      "commands": [
+        "banword",
+        "antitoxic",
+        "antitoksik"
+      ],
+      "tags": [
+        "group"
+      ],
+      "help": [
+        "banword"
       ],
       "locked": false,
       "defaultDisabled": false
