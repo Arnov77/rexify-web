@@ -99,17 +99,17 @@ const PLANS: Plan[] = [
   },
   {
     name: 'Pro',
-    price: 'Rp 5.000',
+    price: 'Rp 3.000',
     period: '/bulan',
-    features: ['2 bot', 'Semua fitur, termasuk AI', 'Masa aktif 30 hari'],
+    features: ['2 bot', 'Semua fitur, termasuk AI & sewa bot', 'Masa aktif 30 hari'],
     cta: 'Pilih Pro',
     popular: true,
   },
   {
     name: 'Enterprise',
-    price: 'Rp 10.000',
+    price: 'Rp 8.000',
     period: '/bulan',
-    features: ['5 bot', 'Semua fitur, termasuk AI', 'Masa aktif 30 hari'],
+    features: ['5 bot', 'Semua fitur, termasuk AI & sewa bot', 'Masa aktif 30 hari'],
     cta: 'Pilih Enterprise',
   },
 ];

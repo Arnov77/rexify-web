@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { forcedDisabledFilesForPlan } from './access';
+import { commandAccessFor } from './plans';
 import { pool } from '../db';
 import { instanceConfigPath } from '../paths';
 import type { BotConfigFile } from '../types/config';
@@ -37,6 +38,9 @@ export async function generateConfig(sessionId: string): Promise<BotConfigFile> 
 
   const base = defaultBotConfig();
   const cs = config.customSettings;
+  // Sewa bot adalah fitur plan berbayar. Untuk free, tulis blok sewa mati supaya runner
+  // core (yang berjalan terpisah dari plugin) tidak pernah mengeluarkan bot dari grup.
+  const sewaAllowed = commandAccessFor(plan).keepCategories?.includes('sewa') ?? true;
 
   const file: BotConfigFile = {
     ...base,
@@ -73,11 +77,13 @@ export async function generateConfig(sessionId: string): Promise<BotConfigFile> 
       packages: cs.premium_packages.length ? cs.premium_packages : base.premium.packages,
     },
     // Sewa bot: default mati & paket kosong, persis seperti dashboard.
-    sewa: {
-      enabled: cs.sewa_enabled ?? false,
-      packages: cs.sewa_packages ?? [],
-      info: cs.sewa_info ?? '',
-    },
+    sewa: sewaAllowed
+      ? {
+          enabled: cs.sewa_enabled ?? false,
+          packages: cs.sewa_packages ?? [],
+          info: cs.sewa_info ?? '',
+        }
+      : { enabled: false, packages: [], info: '' },
     tz: cs.tz || 'Asia/Jakarta',
     // token.rex: pakai key user kalau diisi, fallback ke env platform.
     // token.jerexd: dibuka untuk semua plan. Yang di-gate per plan adalah fitur premiumnya

@@ -203,7 +203,7 @@ export default function Billing() {
 
                 <ul className="plan-card__list">
                   <li>{info.sessions} bot WhatsApp</li>
-                  <li>Semua plugin &amp; AI chat</li>
+                  <li>Semua plugin, AI chat &amp; sewa bot</li>
                   <li>Masa aktif {info.durationDays} hari</li>
                 </ul>
 

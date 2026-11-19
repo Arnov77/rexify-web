@@ -2,8 +2,8 @@ import { apiRequest } from './api';
 
 // Harga & kuota harus sama dengan platform/src/billing/plans.ts dan config/plans.ts.
 export const BILLING_PLAN_INFO = {
-  pro: { label: 'Pro', amount: 5000, durationDays: 30, sessions: 2 },
-  enterprise: { label: 'Enterprise', amount: 10000, durationDays: 30, sessions: 5 },
+  pro: { label: 'Pro', amount: 3000, durationDays: 30, sessions: 2 },
+  enterprise: { label: 'Enterprise', amount: 8000, durationDays: 30, sessions: 5 },
 } as const;
 
 export type BillingPlan = keyof typeof BILLING_PLAN_INFO;

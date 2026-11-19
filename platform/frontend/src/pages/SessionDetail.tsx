@@ -211,10 +211,11 @@ function PremiumPackagesEditor({ packages, onChange }: PremiumPackagesEditorProp
 interface SewaPackagesEditorProps {
   packages: SewaPackage[];
   onChange: (packages: SewaPackage[]) => void;
+  disabled?: boolean;
 }
 
 // Editor paket sewa: sama seperti paket premium, tanpa opsi permanen.
-function SewaPackagesEditor({ packages, onChange }: SewaPackagesEditorProps) {
+function SewaPackagesEditor({ packages, onChange, disabled = false }: SewaPackagesEditorProps) {
   function patch(index: number, changes: Partial<SewaPackage>) {
     onChange(packages.map((pkg, i) => (i === index ? { ...pkg, ...changes } : pkg)));
   }
@@ -256,6 +257,7 @@ function SewaPackagesEditor({ packages, onChange }: SewaPackagesEditorProps) {
                     value={pkg.id}
                     placeholder="7hari"
                     aria-label={`ID paket sewa ${index + 1}`}
+                    disabled={disabled}
                     onChange={(event) => patch(index, { id: event.target.value })}
                   />
                 </td>
@@ -265,6 +267,7 @@ function SewaPackagesEditor({ packages, onChange }: SewaPackagesEditorProps) {
                     value={pkg.label}
                     placeholder="7 Hari"
                     aria-label={`Label paket sewa ${index + 1}`}
+                    disabled={disabled}
                     onChange={(event) => patch(index, { label: event.target.value })}
                   />
                 </td>
@@ -276,6 +279,7 @@ function SewaPackagesEditor({ packages, onChange }: SewaPackagesEditorProps) {
                     max={3650}
                     value={pkg.days}
                     aria-label={`Hari paket sewa ${index + 1}`}
+                    disabled={disabled}
                     onChange={(event) => patch(index, { days: Number(event.target.value) || 0 })}
                   />
                 </td>
@@ -286,6 +290,7 @@ function SewaPackagesEditor({ packages, onChange }: SewaPackagesEditorProps) {
                     min={0}
                     value={pkg.price}
                     aria-label={`Harga paket sewa ${index + 1}`}
+                    disabled={disabled}
                     onChange={(event) => patch(index, { price: Number(event.target.value) || 0 })}
                   />
                 </td>
@@ -294,6 +299,7 @@ function SewaPackagesEditor({ packages, onChange }: SewaPackagesEditorProps) {
                     type="button"
                     className="icon-btn icon-btn--danger"
                     aria-label={`Hapus paket sewa ${pkg.label || pkg.id || index + 1}`}
+                    disabled={disabled}
                     onClick={() => remove(index)}
                   >
                     <IconTrash size={16} />
@@ -304,7 +310,7 @@ function SewaPackagesEditor({ packages, onChange }: SewaPackagesEditorProps) {
           </tbody>
         </table>
       </div>
-      <Button variant="secondary" size="sm" className="pkg-add" onClick={add}>
+      <Button variant="secondary" size="sm" className="pkg-add" onClick={add} disabled={disabled}>
         + Tambah paket
       </Button>
     </div>
@@ -407,6 +413,7 @@ const dateFormat = new Intl.DateTimeFormat('id-ID', {
 
 export default function SessionDetail() {
   const { user, logout } = useAuth();
+  const sewaLocked = user?.plan === 'free';
   const { showToast } = useToast();
   const { sessionId = '' } = useParams<{ sessionId: string }>();
 
@@ -1040,6 +1047,14 @@ export default function SessionDetail() {
 
                   <fieldset className="settings-group">
                     <legend className="settings-group__title">Sewa bot</legend>
+                    {sewaLocked && (
+                      <p className="notice notice--warning notice--with-icon">
+                        <span className="notice__icon" aria-hidden="true">
+                          🔒
+                        </span>
+                        <span>Fitur sewa bot hanya tersedia di plan Pro dan Enterprise.</span>
+                      </p>
+                    )}
                     <div className="sewa-toggle-row">
                       <div>
                         <span className="field__label">Aktifkan fitur sewa</span>
@@ -1054,6 +1069,7 @@ export default function SessionDetail() {
                         aria-checked={settings.sewa_enabled ?? false}
                         aria-label={`Fitur sewa ${settings.sewa_enabled ? 'aktif' : 'mati'}`}
                         className={settings.sewa_enabled ? 'toggle toggle--on' : 'toggle'}
+                        disabled={sewaLocked}
                         onClick={() => updateSetting('sewa_enabled', !(settings.sewa_enabled ?? false))}
                       >
                         <span className="sr-only">Aktifkan fitur sewa</span>
@@ -1071,6 +1087,7 @@ export default function SessionDetail() {
                         value={settings.sewa_info ?? ''}
                         placeholder="Contoh: Bayar via QRIS, lalu kirim bukti ke owner. Bot aktif maksimal 1x24 jam setelah pembayaran."
                         maxLength={2000}
+                        disabled={sewaLocked}
                         onChange={(event) => updateSetting('sewa_info', event.target.value)}
                       />
                       <p className="field__hint">
@@ -1085,6 +1102,7 @@ export default function SessionDetail() {
                     <SewaPackagesEditor
                       packages={settings.sewa_packages ?? []}
                       onChange={(next) => updateSetting('sewa_packages', next)}
+                      disabled={sewaLocked}
                     />
                   </fieldset>
 

@@ -58,7 +58,6 @@ const FREE_CATEGORIES = [
   'sticker',
   'downloader',
   'premium',
-  'sewa',
   'games',
   'game',
   'rpg',
@@ -67,14 +66,15 @@ const FREE_CATEGORIES = [
   'generator',
 ];
 
-// Gating command per plan: free dapat fitur inti, pro menambah AI/manga, enterprise
-// membuka semua. Plugin `owner` tetap terkunci untuk semua plan lewat flag `locked`.
+// Gating command per plan: free dapat fitur inti, pro menambah AI/manga/sewa bot,
+// enterprise membuka semua. Plugin `owner` tetap terkunci untuk semua plan lewat flag
+// `locked`.
 export const PLAN_COMMANDS: Record<PlanName, CommandAccess> = {
   free: { keepCategories: FREE_CATEGORIES },
   // Ditulis sebagai free + tambahan supaya pro tidak mungkin kehilangan kategori yang
   // dimiliki free (sebelumnya pro justru tidak punya games/game/rpg).
   pro: {
-    keepCategories: [...FREE_CATEGORIES, 'ai', 'manga'],
+    keepCategories: [...FREE_CATEGORIES, 'ai', 'manga', 'sewa'],
   },
   enterprise: { keepCategories: null },
 };

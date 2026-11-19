@@ -31,8 +31,17 @@ interface PresetParams extends SessionParams {
   presetId: string;
 }
 
-// Identitas bot hanya untuk plan berbayar; plan free tetap memakai nilai default.
-const LOCKED_FREE_FIELDS = ['botname', 'thumbnailUrl', 'audioUrl', 'web'] as const;
+// Field khusus plan berbayar; request dari plan free dibuang supaya tidak bisa
+// diaktifkan lewat API manual.
+const LOCKED_FREE_FIELDS = [
+  'botname',
+  'thumbnailUrl',
+  'audioUrl',
+  'web',
+  'sewa_enabled',
+  'sewa_packages',
+  'sewa_info',
+] as const;
 
 async function loadConfig(sessionId: string): Promise<BotConfig> {
   return (await getConfig(sessionId)) ?? defaultConfigFor(sessionId);
