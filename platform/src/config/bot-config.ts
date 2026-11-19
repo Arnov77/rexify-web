@@ -16,6 +16,7 @@ import {
   DEFAULT_CUSTOM_SETTINGS,
   DEFAULT_PLUGINS_ENABLED,
   DEFAULT_WELCOME_MSG,
+  defaultCustomization,
 } from './defaults';
 import {
   ValidationError,
@@ -55,6 +56,19 @@ function mapRow(row: BotConfigRow): BotConfig {
       antilink_whitelist_domain: settings.antilink_whitelist_domain ?? [],
       antilink_whitelist_number: settings.antilink_whitelist_number ?? [],
       premium_packages: settings.premium_packages ?? [],
+      // Row lama (sebelum fitur ini) belum punya blok customization: isi dari default
+      // supaya frontend tidak membaca undefined.
+      customization: {
+        group_texts: {
+          ...defaultCustomization().group_texts,
+          ...(settings.customization?.group_texts ?? {}),
+        },
+        menu: {
+          header: settings.customization?.menu?.header ?? '',
+          footer: settings.customization?.menu?.footer ?? '',
+          tags: settings.customization?.menu?.tags ?? {},
+        },
+      },
     },
     // Row lama (ai_settings '{}') tetap aman: semua field jatuh ke preset default.
     aiSettings: { ...DEFAULT_AI_SETTINGS, ...(row.ai_settings ?? {}) },

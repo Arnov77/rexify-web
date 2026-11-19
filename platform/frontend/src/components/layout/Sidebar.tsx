@@ -11,6 +11,7 @@ import {
   IconUser,
 } from '../icons';
 import type { SessionTab } from '../../lib/types';
+import SupportLinks from './SupportLinks';
 import type { Theme } from '../../lib/useTheme';
 
 export interface ActiveSessionInfo {
@@ -39,6 +40,7 @@ interface SidebarProps {
 const SUBNAV_TABS: { key: SessionTab; label: string }[] = [
   { key: 'ai', label: 'AI' },
   { key: 'plugin', label: 'Plugin' },
+  { key: 'tampilan', label: 'Tampilan' },
   { key: 'settings', label: 'Pengaturan' },
 ];
 
@@ -178,6 +180,8 @@ export default function Sidebar({
         {!collapsed && (
           <span className={badge.className}>{badge.label}</span>
         )}
+
+        <SupportLinks collapsed={collapsed} onNavigate={onNavigate} />
 
         <button
           type="button"

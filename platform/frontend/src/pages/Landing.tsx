@@ -11,6 +11,7 @@ import {
   type IconProps,
 } from '../components/icons';
 import { useAuth } from '../lib/auth';
+import { supportChannels } from '../lib/support';
 import { withViewTransition } from '../lib/viewTransition';
 import Logo from '../components/Logo';
 import '../styles/landing.css';
@@ -93,14 +94,14 @@ const PLANS: Plan[] = [
     name: 'Trial',
     price: 'Gratis',
     period: '7 hari',
-    features: ['1 bot', 'Semua fitur dasar', 'Masa aktif 7 hari'],
+    features: ['1 bot', 'Fitur inti, game & RPG', 'Masa aktif 7 hari'],
     cta: 'Mulai Gratis',
   },
   {
     name: 'Pro',
     price: 'Rp 5.000',
     period: '/bulan',
-    features: ['2 bot', 'Semua fitur', 'Masa aktif 30 hari'],
+    features: ['2 bot', 'Semua fitur, termasuk AI', 'Masa aktif 30 hari'],
     cta: 'Pilih Pro',
     popular: true,
   },
@@ -108,7 +109,7 @@ const PLANS: Plan[] = [
     name: 'Enterprise',
     price: 'Rp 10.000',
     period: '/bulan',
-    features: ['5 bot', 'Semua fitur', 'Masa aktif 30 hari'],
+    features: ['5 bot', 'Semua fitur, termasuk AI', 'Masa aktif 30 hari'],
     cta: 'Pilih Enterprise',
   },
 ];
@@ -313,7 +314,9 @@ export default function Landing() {
             <div className="landing-section__head" data-reveal>
               <span className="landing-eyebrow">Harga</span>
               <h2 className="landing-section__title">Mulai gratis, upgrade kalau butuh</h2>
-              <p className="landing-section__sub">Coba semua fitur selama 7 hari.</p>
+              <p className="landing-section__sub">
+                Trial membuka fitur inti, game, dan RPG selama 7 hari. AI dan fitur premium menyusul di Pro.
+              </p>
             </div>
 
             <div className="pricing">
@@ -422,9 +425,23 @@ export default function Landing() {
             <Logo size={24} className="landing-footer__logo" />
             <span>© 2026 Rexify</span>
           </div>
-          <nav className="landing-footer__links" aria-label="Dokumen layanan">
+          <nav className="landing-footer__links" aria-label="Tautan layanan dan bantuan">
             <Link to="/terms">Syarat dan Ketentuan</Link>
             <Link to="/privacy">Kebijakan Privasi</Link>
+            {supportChannels().map((channel) => {
+              const external = channel.href.startsWith('http');
+              return (
+                <a
+                  key={channel.id}
+                  href={channel.href}
+                  title={channel.hint}
+                  target={external ? '_blank' : undefined}
+                  rel={external ? 'noreferrer noopener' : undefined}
+                >
+                  {channel.label}
+                </a>
+              );
+            })}
           </nav>
           <span>
             Dibuat dengan <IconHeart size={14} className="landing-footer__heart" /> oleh Arnov
