@@ -275,9 +275,28 @@
   color: var(--color-error);
 }
 
+/* Penanda kecil supaya blok error gampang ditemukan saat scroll. */
+.console-line__badge {
+  display: inline-block;
+  margin-right: var(--space-sm);
+  padding: 0 var(--space-xs);
+  border-radius: var(--radius-sm);
+  background: var(--color-error-muted);
+  color: var(--color-error);
+  font-size: 10px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.04em;
+  vertical-align: 1px;
+}
+
 .console-line__time {
   margin-right: var(--space-sm);
   color: var(--color-text-secondary);
+}
+
+.console-panel__error-count {
+  color: var(--color-error);
+  font-weight: var(--weight-semibold);
 }
 
 /* Atribut teks hasil urai ANSI SGR. Warna dipasang inline karena nilainya dinamis. */

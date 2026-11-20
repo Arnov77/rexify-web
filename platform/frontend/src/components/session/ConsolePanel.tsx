@@ -28,8 +28,10 @@ type ConnectionState = 'connecting' | 'open' | 'closed';
 const sessionCache = new Map<string, LogEntry[]>();
 
 // Log core memakai "HH:MM:SS", log lain (PM2/pino) "YYYY-MM-DD HH:MM:SS".
+// Baris error dari error.log diawali "[ERR] " oleh server, jadi prefix itu ikut
+// dilewati supaya timestamp tetap tampil di kolom waktu.
 const TIME_RE =
-  /^(\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?|\d{2}:\d{2}:\d{2})\s*[:\-|]?\s*/;
+  /^(?:\[ERR\]\s*)?(\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?|\d{2}:\d{2}:\d{2})\s*[:\-|]?\s*/;
 
 // Baris bot diawali escape warna (ESC[90m...), jadi timestamp dicari di teks bersih
 // lalu jumlah karakter itu dipotong dari span berwarna.
@@ -134,6 +136,12 @@ export default function ConsolePanel({ sessionId, onClose }: ConsolePanelProps) 
     sessionCache.set(sessionId, entries);
   }, [entries, sessionId]);
 
+  // Satu dump error bisa ratusan baris lanjutan; hitung header-nya saja (yang punya waktu).
+  const errorCount = entries.reduce(
+    (count, entry) => (entry.isError && entry.time ? count + 1 : count),
+    0,
+  );
+
   return (
     <section className="console-panel" aria-label="Console log bot">
       <header className="console-panel__header">
@@ -163,6 +171,7 @@ export default function ConsolePanel({ sessionId, onClose }: ConsolePanelProps) 
               key={entry.key}
               className={entry.isError ? 'console-line console-line--error' : 'console-line'}
             >
+              {entry.isError && <span className="console-line__badge">ERR</span>}
               {entry.time && <span className="console-line__time">{entry.time}</span>}
               {entry.spans.map((span, index) => (
                 <span
@@ -196,6 +205,12 @@ export default function ConsolePanel({ sessionId, onClose }: ConsolePanelProps) 
           <>
             <span aria-hidden="true">·</span>
             <span>{entries.length} baris</span>
+            {errorCount > 0 && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="console-panel__error-count">{errorCount} error</span>
+              </>
+            )}
           </>
         )}
       </footer>

@@ -17,6 +17,11 @@ const POLL_MS = 1000;
 const TAIL_LINES = 100;
 // Batas baca awal supaya file log raksasa tidak dibaca utuh.
 const TAIL_BYTES = 64 * 1024;
+// Kalau window 64KB mulai di tengah dump error (stack trace tanpa timestamp),
+// baca lebih jauh ke belakang untuk menemukan baris header error-nya.
+const HEADER_LOOKBACK_BYTES = 512 * 1024;
+// Satu dump error bisa ratusan baris; tampilkan header + awal pesannya saja.
+const ERROR_BLOCK_MAX_LINES = 150;
 // ws: 1 = OPEN, tapi `ws` hanya expose konstanta ini sebagai static.
 const SOCKET_OPEN = 1;
 const POLICY_VIOLATION = 1008;
@@ -40,7 +45,10 @@ interface ParsedTime {
 }
 
 function parseLineTime(line: string): ParsedTime | null {
-  const match = LINE_TIME_RE.exec(line.replace(ANSI_PREFIX_RE, ''));
+  // Baris error diberi prefix "[ERR] " oleh LogTailer, dan timestamp aslinya
+  // masih terbungkus ANSI. Bersihkan keduanya sebelum parsing.
+  const cleaned = line.replace(/^\[ERR\]\s*/, '').replace(ANSI_PREFIX_RE, '');
+  const match = LINE_TIME_RE.exec(cleaned);
   if (!match) return null;
 
   const [, year, month, day, hour, minute, second, millis] = match;
@@ -113,28 +121,58 @@ function withInheritedTimes(lines: string[]): Array<{ line: string; time: number
   });
 }
 
-// Gabungkan out.log dan error.log berdasarkan timestamp; tanpa ini baris error lama
-// selalu menempel di bawah baris out terbaru.
-export function mergeChronological(outLines: string[], errLines: string[]): string[] {
+// Baris error lanjutan (stack trace/object dump) tidak punya timestamp. Dulu baris
+// seperti ini dianggap "paling tua" dan ditempel di atas log biasa, sehingga error
+// terlihat lepas dari konteksnya. Sekarang baris tanpa waktu memakai fallback:
+// - history: mtime file error (kapan blok itu terakhir ditulis),
+// - live: waktu polling saat ini.
+export function mergeChronological(
+  outLines: string[],
+  errLines: string[],
+  fallbackTime?: number | null,
+): string[] {
   const tagged = [
     ...withInheritedTimes(outLines).map((item, index) => ({ ...item, index })),
     ...withInheritedTimes(errLines).map((item, index) => ({ ...item, index: outLines.length + index })),
   ];
 
+  const newest = tagged.reduce((max, item) => (item.time !== null && item.time > max ? item.time : max), 0);
+  const fallback = fallbackTime ?? (newest > 0 ? newest : Date.now());
+
   tagged.sort((a, b) => {
-    // Null = baris paling tua di window (chunk kepotong di awal), jadi taruh di atas.
-    if (a.time === null && b.time === null) return a.index - b.index;
-    if (a.time === null) return -1;
-    if (b.time === null) return 1;
-    return a.time - b.time || a.index - b.index;
+    const at = a.time ?? fallback;
+    const bt = b.time ?? fallback;
+    return at - bt || a.index - b.index;
   });
 
   return tagged.map((item) => item.line);
 }
 
+function lineHasTime(line: string): boolean {
+  return parseLineTime(line) !== null;
+}
+
+// Index baris ber-timestamp terakhir sebelum `before`, atau -1 kalau tidak ada.
+function lastHeaderIndex(lines: string[], before: number): number {
+  for (let i = Math.min(before, lines.length) - 1; i >= 0; i -= 1) {
+    if (lineHasTime(lines[i])) return i;
+  }
+  return -1;
+}
+
+// Dump error bisa ratusan baris. Pertahankan header (pesan error) dan awal stack,
+// lalu tandai sisanya dipotong supaya console tidak tenggelam di object internal.
+function capErrorBlock(lines: string[], max: number): string[] {
+  if (lines.length <= max) return lines;
+  const kept = lines.slice(0, max - 1);
+  const dropped = lines.length - kept.length;
+  return [...kept, `\u001b[90m... (${dropped} baris berikutnya dipotong)\u001b[39m`];
+}
+
 // Pembaca incremental: simpan offset byte + sisa baris yang belum lengkap, jadi hanya
 // bytes baru yang dibaca tiap tick dan baris yang terpotong tidak dikirim separuh.
-class LogTailer {
+// Diekspor supaya bisa diuji langsung dengan file log asli.
+export class LogTailer {
   private offset = 0;
   private rest = '';
   // inode file yang sedang dipantau, untuk mendeteksi file diganti (logrotate).
@@ -149,30 +187,65 @@ class LogTailer {
     return this.prefix ? `${this.prefix}${line}` : line;
   }
 
-  async history(count: number): Promise<string[]> {
-    if (!existsSync(this.file)) return [];
+  async history(
+    count: number,
+    options: { errorBlock?: boolean } = {},
+  ): Promise<{ lines: string[]; fallbackTime: number | null }> {
+    if (!existsSync(this.file)) return { lines: [], fallbackTime: null };
 
     const handle = await open(this.file, 'r');
     try {
       const stats = await handle.stat();
       const size = stats.size;
       const start = Math.max(0, size - TAIL_BYTES);
-      const length = size - start;
-      const buffer = Buffer.alloc(length);
-      if (length > 0) await handle.read(buffer, 0, length, start);
 
       // Posisi polling lanjut dari akhir file supaya baris lama tidak dikirim dua kali.
       this.offset = size;
       this.ino = stats.ino;
 
-      const lines = buffer.toString('utf8').split('\n');
-      // Baris pertama bisa terpotong kalau start bukan di awal baris.
-      if (start > 0) lines.shift();
+      const readRange = async (from: number): Promise<string[]> => {
+        const length = size - from;
+        const buffer = Buffer.alloc(length);
+        if (length > 0) await handle.read(buffer, 0, length, from);
 
-      return lines
-        .filter((line) => line.length > 0)
-        .slice(-count)
-        .map((line) => this.decorate(line));
+        const parts = buffer.toString('utf8').split('\n');
+        // Baris pertama bisa terpotong kalau `from` bukan di awal baris.
+        if (from > 0) parts.shift();
+        return parts.filter((line) => line.length > 0);
+      };
+
+      let lines = await readRange(start);
+
+      if (options.errorBlock) {
+        const tail = lines.slice(-count);
+
+        // Kalau potongan terakhir mulai di tengah dump (baris pertama tanpa
+        // timestamp), mundur ke header error supaya pesan aslinya ikut tampil.
+        if (tail.length > 0 && !lineHasTime(tail[0])) {
+          let header = lastHeaderIndex(lines, lines.length - tail.length);
+
+          if (header === -1 && start > 0) {
+            // Window 64KB masih mulai di tengah dump; baca lebih jauh ke belakang.
+            const widerStart = Math.max(0, start - HEADER_LOOKBACK_BYTES);
+            const wider = await readRange(widerStart);
+            header = lastHeaderIndex(wider, wider.length - tail.length);
+            if (header !== -1) lines = wider;
+          }
+
+          lines = header !== -1 ? lines.slice(header) : tail;
+        } else {
+          lines = tail;
+        }
+
+        lines = capErrorBlock(lines, ERROR_BLOCK_MAX_LINES);
+      } else {
+        lines = lines.slice(-count);
+      }
+
+      return {
+        lines: lines.map((line) => this.decorate(line)),
+        fallbackTime: stats.mtimeMs,
+      };
     } finally {
       await handle.close();
     }
@@ -319,9 +392,12 @@ export default async function logServer(app: FastifyInstance): Promise<void> {
       const out = new LogTailer(logPaths.out);
       const err = new LogTailer(logPaths.err, '[ERR] ');
 
+      const outHistory = await out.history(TAIL_LINES);
+      const errHistory = await err.history(TAIL_LINES, { errorBlock: true });
       const history = mergeChronological(
-        await out.history(TAIL_LINES),
-        await err.history(TAIL_LINES),
+        outHistory.lines,
+        errHistory.lines,
+        errHistory.fallbackTime ?? outHistory.fallbackTime,
       );
       send({ type: 'history', lines: history });
 
@@ -331,7 +407,7 @@ export default async function logServer(app: FastifyInstance): Promise<void> {
           busy = true;
 
           try {
-            const lines = mergeChronological(await out.readNew(), await err.readNew());
+            const lines = mergeChronological(await out.readNew(), await err.readNew(), Date.now());
             for (const line of lines) send({ type: 'line', data: line });
           } catch (error) {
             // Detail error hanya ke log server; klien tidak perlu tahu isi exception.
