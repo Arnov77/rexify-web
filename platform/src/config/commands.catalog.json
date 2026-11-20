@@ -1,7 +1,7 @@
 {
   "generatedAt": "2026-11-19T00:48:29.904Z",
   "source": "core/plugins",
-  "total": 186,
+  "total": 187,
   "commands": [
     {
       "file": "plugins/ai/auto-ai.js",
@@ -989,6 +989,26 @@
       ],
       "help": [
         "banword"
+      ],
+      "locked": false,
+      "defaultDisabled": false
+    },
+    {
+      "file": "plugins/group/cig.js",
+      "category": "group",
+      "commands": [
+        "cig",
+        "cekidgrup",
+        "cekidgc",
+        "idgrup",
+        "idgc"
+      ],
+      "tags": [
+        "group"
+      ],
+      "help": [
+        "cig",
+        "cekidgrup"
       ],
       "locked": false,
       "defaultDisabled": false
