@@ -1,12 +1,12 @@
 // Streaming log bot realtime via WebSocket: mode 'same' baca file log PM2 dari disk,
 // mode 'other' proxy WS ke Bot Runner.
 
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { open } from 'node:fs/promises';
 import type { FastifyInstance } from 'fastify';
 import type { SocketStream } from '@fastify/websocket';
 import WebSocket, { type RawData } from 'ws';
-import { instanceErrorLogPath, instanceLogPath } from '../paths';
+import { instanceConfigPath, instanceErrorLogPath, instanceLogPath } from '../paths';
 import { botRunnerLogsUrl } from '../session/bot-runner-client';
 import { getSessionLogPaths, isRemoteMode } from '../session/pm2-manager';
 import { getSession } from '../session/store';
@@ -20,8 +20,10 @@ const TAIL_BYTES = 64 * 1024;
 // Kalau window 64KB mulai di tengah dump error (stack trace tanpa timestamp),
 // baca lebih jauh ke belakang untuk menemukan baris header error-nya.
 const HEADER_LOOKBACK_BYTES = 512 * 1024;
-// Satu dump error bisa ratusan baris; tampilkan header + awal pesannya saja.
-const ERROR_BLOCK_MAX_LINES = 150;
+// Satu dump error bisa ratusan baris; simpan header + awal dump tiap error.
+const ERROR_BLOCK_KEEP_LINES = 40;
+// Zona waktu cadangan kalau config instance tidak terbaca.
+const DEFAULT_LOG_TZ = process.env.LOG_TZ ?? 'Asia/Jakarta';
 // ws: 1 = OPEN, tapi `ws` hanya expose konstanta ini sebagai static.
 const SOCKET_OPEN = 1;
 const POLICY_VIOLATION = 1008;
@@ -39,12 +41,87 @@ const LINE_TIME_RE =
 const ROLLOVER_MS = 12 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// Timestamp log ditulis core/lib/logger.js memakai TZ proses bot (config.tz,
+// default Asia/Jakarta), sedangkan platform bisa jalan di UTC. Tanpa konversi,
+// jam "08:23:45" dianggap 7 jam lebih lambat dari aslinya sehingga error lama
+// tampil di bawah log baru.
+const formatterCache = new Map<string, Intl.DateTimeFormat>();
+
+function formatterFor(timeZone: string): Intl.DateTimeFormat {
+  let formatter = formatterCache.get(timeZone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hour12: false,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+    formatterCache.set(timeZone, formatter);
+  }
+  return formatter;
+}
+
+function normalizeTimezone(timeZone?: string | null): string {
+  if (!timeZone) return DEFAULT_LOG_TZ;
+  try {
+    formatterFor(timeZone);
+    return timeZone;
+  } catch {
+    return DEFAULT_LOG_TZ;
+  }
+}
+
+// Selisih zona terhadap UTC pada detik tertentu (WIB = +7 jam, tanpa DST).
+function timezoneOffsetMs(timeZone: string, utcMs: number): number {
+  const parts = formatterFor(timeZone).formatToParts(new Date(utcMs));
+  const value = (type: string): number => Number(parts.find((part) => part.type === type)?.value ?? 0);
+  const asUtc = Date.UTC(
+    value('year'),
+    value('month') - 1,
+    value('day'),
+    value('hour') % 24,
+    value('minute'),
+    value('second'),
+  );
+  return asUtc - utcMs;
+}
+
+// Ubah jam dinding (wall clock) di zona `timeZone` menjadi epoch milidetik.
+function wallClockToEpoch(
+  timeZone: string,
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  second: number,
+  ms: number,
+): number {
+  const guess = Date.UTC(year, month - 1, day, hour, minute, second, ms);
+  // Dua langkah untuk zona yang punya DST.
+  const first = guess - timezoneOffsetMs(timeZone, guess);
+  return guess - timezoneOffsetMs(timeZone, first);
+}
+
+function readTimezone(sessionId: string): string {
+  try {
+    const raw = readFileSync(instanceConfigPath(sessionId), 'utf8');
+    return normalizeTimezone((JSON.parse(raw) as { tz?: string } | null)?.tz);
+  } catch {
+    return normalizeTimezone(DEFAULT_LOG_TZ);
+  }
+}
+
 interface ParsedTime {
   time: number;
   hasDate: boolean;
 }
 
-function parseLineTime(line: string): ParsedTime | null {
+function parseLineTime(line: string, timeZone: string): ParsedTime | null {
   // Baris error diberi prefix "[ERR] " oleh LogTailer, dan timestamp aslinya
   // masih terbungkus ANSI. Bersihkan keduanya sebelum parsing.
   const cleaned = line.replace(/^\[ERR\]\s*/, '').replace(ANSI_PREFIX_RE, '');
@@ -55,36 +132,39 @@ function parseLineTime(line: string): ParsedTime | null {
   const ms = millis ? Number(millis.padEnd(3, '0')) : 0;
 
   if (year && month && day) {
-    const time = new Date(
+    const time = wallClockToEpoch(
+      timeZone,
       Number(year),
-      Number(month) - 1,
+      Number(month),
       Number(day),
       Number(hour),
       Number(minute),
       Number(second),
       ms,
-    ).getTime();
+    );
     return Number.isNaN(time) ? null : { time, hasDate: true };
   }
 
-  // Tanpa tanggal: tempel ke tanggal lokal hari ini (koreksi tengah malam di bawah).
-  const now = new Date();
-  const time = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
+  // Tanpa tanggal: tempel ke tanggal berjalan di zona waktu bot.
+  const nowParts = formatterFor(timeZone).formatToParts(new Date());
+  const value = (type: string): number => Number(nowParts.find((part) => part.type === type)?.value ?? 0);
+  const time = wallClockToEpoch(
+    timeZone,
+    value('year'),
+    value('month'),
+    value('day'),
     Number(hour),
     Number(minute),
     Number(second),
     ms,
-  ).getTime();
+  );
   return Number.isNaN(time) ? null : { time, hasDate: false };
 }
 
 // File yang seluruhnya "HH:MM:SS" bisa berisi log kemarin; kalau baris terakhir
 // tampak di masa depan, geser seluruh file ke hari sebelumnya.
-function normalizeTimes(lines: string[]): Array<number | null> {
-  const parsed = lines.map((line) => parseLineTime(line));
+function normalizeTimes(lines: string[], timeZone: string): Array<number | null> {
+  const parsed = lines.map((line) => parseLineTime(line, timeZone));
   const onlyTime = parsed.length > 0 && parsed.every((item) => item === null || !item.hasDate);
 
   let times = parsed.map((item) => item?.time ?? null);
@@ -109,8 +189,11 @@ function normalizeTimes(lines: string[]): Array<number | null> {
 
 // PM2 hanya menempel timestamp di baris pertama tiap chunk; baris lanjutan mewarisi
 // timestamp baris sebelumnya supaya tidak menumpuk di paling bawah.
-function withInheritedTimes(lines: string[]): Array<{ line: string; time: number | null }> {
-  const times = normalizeTimes(lines);
+function withInheritedTimes(
+  lines: string[],
+  timeZone: string,
+): Array<{ line: string; time: number | null }> {
+  const times = normalizeTimes(lines, timeZone);
   // Baris pembuka tanpa timestamp (chunk terpotong) ikut timestamp pertama yang ada.
   let current = times.find((time) => time !== null) ?? null;
 
@@ -130,10 +213,12 @@ export function mergeChronological(
   outLines: string[],
   errLines: string[],
   fallbackTime?: number | null,
+  timeZone: string = DEFAULT_LOG_TZ,
 ): string[] {
+  const tz = normalizeTimezone(timeZone);
   const tagged = [
-    ...withInheritedTimes(outLines).map((item, index) => ({ ...item, index })),
-    ...withInheritedTimes(errLines).map((item, index) => ({ ...item, index: outLines.length + index })),
+    ...withInheritedTimes(outLines, tz).map((item, index) => ({ ...item, index })),
+    ...withInheritedTimes(errLines, tz).map((item, index) => ({ ...item, index: outLines.length + index })),
   ];
 
   const newest = tagged.reduce((max, item) => (item.time !== null && item.time > max ? item.time : max), 0);
@@ -148,25 +233,50 @@ export function mergeChronological(
   return tagged.map((item) => item.line);
 }
 
-function lineHasTime(line: string): boolean {
-  return parseLineTime(line) !== null;
+function lineHasTime(line: string, timeZone: string): boolean {
+  return parseLineTime(line, timeZone) !== null;
 }
 
 // Index baris ber-timestamp terakhir sebelum `before`, atau -1 kalau tidak ada.
-function lastHeaderIndex(lines: string[], before: number): number {
+function lastHeaderIndex(lines: string[], before: number, timeZone: string): number {
   for (let i = Math.min(before, lines.length) - 1; i >= 0; i -= 1) {
-    if (lineHasTime(lines[i])) return i;
+    if (lineHasTime(lines[i], timeZone)) return i;
   }
   return -1;
 }
 
-// Dump error bisa ratusan baris. Pertahankan header (pesan error) dan awal stack,
-// lalu tandai sisanya dipotong supaya console tidak tenggelam di object internal.
-function capErrorBlock(lines: string[], max: number): string[] {
-  if (lines.length <= max) return lines;
-  const kept = lines.slice(0, max - 1);
-  const dropped = lines.length - kept.length;
-  return [...kept, `\u001b[90m... (${dropped} baris berikutnya dipotong)\u001b[39m`];
+// Dump error bisa ratusan baris. Simpan semua header error (pesan aslinya),
+// tapi batasi baris lanjutan tiap dump supaya console tidak tenggelam di object
+// internal. Dengan begitu error baru tidak ikut terbuang saat ada dump panjang.
+function capErrorBlock(lines: string[], timeZone: string): string[] {
+  const output: string[] = [];
+  let kept = 0;
+  let dropped = 0;
+
+  const flushDropped = (): void => {
+    if (dropped === 0) return;
+    output.push(`\u001b[90m... (${dropped} baris dump dipotong)\u001b[39m`);
+    dropped = 0;
+  };
+
+  for (const line of lines) {
+    if (lineHasTime(line, timeZone)) {
+      flushDropped();
+      output.push(line);
+      kept = 0;
+      continue;
+    }
+
+    if (kept < ERROR_BLOCK_KEEP_LINES) {
+      output.push(line);
+      kept += 1;
+    } else {
+      dropped += 1;
+    }
+  }
+
+  flushDropped();
+  return output;
 }
 
 // Pembaca incremental: simpan offset byte + sisa baris yang belum lengkap, jadi hanya
@@ -181,7 +291,12 @@ export class LogTailer {
   constructor(
     private readonly file: string,
     private readonly prefix = '',
-  ) {}
+    timeZone: string = DEFAULT_LOG_TZ,
+  ) {
+    this.timezone = normalizeTimezone(timeZone);
+  }
+
+  private readonly timezone: string;
 
   private decorate(line: string): string {
     return this.prefix ? `${this.prefix}${line}` : line;
@@ -221,14 +336,14 @@ export class LogTailer {
 
         // Kalau potongan terakhir mulai di tengah dump (baris pertama tanpa
         // timestamp), mundur ke header error supaya pesan aslinya ikut tampil.
-        if (tail.length > 0 && !lineHasTime(tail[0])) {
-          let header = lastHeaderIndex(lines, lines.length - tail.length);
+        if (tail.length > 0 && !lineHasTime(tail[0], this.timezone)) {
+          let header = lastHeaderIndex(lines, lines.length - tail.length, this.timezone);
 
           if (header === -1 && start > 0) {
             // Window 64KB masih mulai di tengah dump; baca lebih jauh ke belakang.
             const widerStart = Math.max(0, start - HEADER_LOOKBACK_BYTES);
             const wider = await readRange(widerStart);
-            header = lastHeaderIndex(wider, wider.length - tail.length);
+            header = lastHeaderIndex(wider, wider.length - tail.length, this.timezone);
             if (header !== -1) lines = wider;
           }
 
@@ -237,7 +352,7 @@ export class LogTailer {
           lines = tail;
         }
 
-        lines = capErrorBlock(lines, ERROR_BLOCK_MAX_LINES);
+        lines = capErrorBlock(lines, this.timezone)
       } else {
         lines = lines.slice(-count);
       }
@@ -389,8 +504,10 @@ export default async function logServer(app: FastifyInstance): Promise<void> {
       );
 
       // out.log dan error.log dipantau bersamaan; baris error diberi prefix [ERR].
-      const out = new LogTailer(logPaths.out);
-      const err = new LogTailer(logPaths.err, '[ERR] ');
+      // Jam log mengikuti TZ instance bot, bukan TZ proses platform.
+      const timezone = readTimezone(sessionId);
+      const out = new LogTailer(logPaths.out, '', timezone);
+      const err = new LogTailer(logPaths.err, '[ERR] ', timezone);
 
       const outHistory = await out.history(TAIL_LINES);
       const errHistory = await err.history(TAIL_LINES, { errorBlock: true });
@@ -398,6 +515,7 @@ export default async function logServer(app: FastifyInstance): Promise<void> {
         outHistory.lines,
         errHistory.lines,
         errHistory.fallbackTime ?? outHistory.fallbackTime,
+        timezone,
       );
       send({ type: 'history', lines: history });
 
@@ -407,7 +525,12 @@ export default async function logServer(app: FastifyInstance): Promise<void> {
           busy = true;
 
           try {
-            const lines = mergeChronological(await out.readNew(), await err.readNew(), Date.now());
+            const lines = mergeChronological(
+              await out.readNew(),
+              await err.readNew(),
+              Date.now(),
+              timezone,
+            );
             for (const line of lines) send({ type: 'line', data: line });
           } catch (error) {
             // Detail error hanya ke log server; klien tidak perlu tahu isi exception.
